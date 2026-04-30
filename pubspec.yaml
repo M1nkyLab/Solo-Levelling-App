@@ -1,0 +1,28 @@
+name: solo_levelling_app
+description: A gamified fitness app with Shadow Monarch RPG aesthetics.
+publish_to: 'none'
+version: 1.0.0+1
+
+environment:
+  sdk: '>=3.0.0 <4.0.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+  # Google Fonts – Cinzel (serif headlines) + Roboto Mono + Rajdhani (body)
+  google_fonts: ^6.2.1
+
+  # Supabase Flutter SDK
+  supabase_flutter: ^2.5.0
+
+  # Local storage for offline quest caching
+  shared_preferences: ^2.2.3
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^3.0.0
+
+flutter:
+  uses-material-design: true
