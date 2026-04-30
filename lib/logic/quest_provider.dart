@@ -48,8 +48,10 @@ class QuestNotifier extends Notifier<List<DailyQuest>> {
 
   void _checkAllDone() {
     final allDone = state.every((q) => q.isCompleted);
-    // Note: In a real app, you'd want to track if the daily bonus was already claimed today.
-    // For this prototype, we'll assume it's a one-time trigger per session or managed elsewhere.
+    if (allDone) {
+      // Grant daily completion bonus (fires once per session when all quests complete)
+      ref.read(playerProvider.notifier).addXp(500);
+    }
   }
 }
 

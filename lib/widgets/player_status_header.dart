@@ -1,4 +1,3 @@
-import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 
@@ -94,7 +93,7 @@ class _PlayerStatusHeaderState extends State<PlayerStatusHeader>
             boxShadow: [
               // Ambient purple glow – tighter and crisper
               BoxShadow(
-                color: ShadowColors.amethyst.withOpacity(glowOpacity),
+                color: ShadowColors.amethyst.withValues(alpha: glowOpacity),
                 blurRadius: 16,
                 spreadRadius: 0,
               ),
@@ -174,8 +173,8 @@ class _IdentityRow extends StatelessWidget {
           animation: pulse,
           builder: (_, __) {
             final glowColor = isRankUpReady
-                ? ShadowColors.xpGold.withOpacity(0.35 + 0.25 * pulse.value)
-                : ShadowColors.amethyst.withOpacity(0.20);
+                ? ShadowColors.xpGold.withValues(alpha: 0.35 + 0.25 * pulse.value)
+                : ShadowColors.amethyst.withValues(alpha: 0.20);
 
             return Container(
               padding:
@@ -297,7 +296,7 @@ class _StatSection extends StatelessWidget {
                 shape: BoxShape.circle,
                 boxShadow: [
                   BoxShadow(
-                      color: color.withOpacity(0.7),
+                      color: color.withValues(alpha: 0.7),
                       blurRadius: 6,
                       spreadRadius: 1),
                 ],

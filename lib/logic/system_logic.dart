@@ -17,6 +17,8 @@
 ///   final rank  = SystemLogic.determineHunterRank(level);
 ///   ```
 
+library system_logic;
+
 // ─────────────────────────────────────────────────────────────────────────────
 //  Rank definitions (kept in one place so the thresholds never drift)
 // ─────────────────────────────────────────────────────────────────────────────

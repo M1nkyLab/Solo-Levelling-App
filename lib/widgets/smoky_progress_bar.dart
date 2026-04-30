@@ -86,8 +86,8 @@ class _SmokePainter extends CustomPainter {
           begin: Alignment.centerLeft,
           end: Alignment.centerRight,
           colors: [
-            accentColor.withOpacity(0.25),
-            accentColor.withOpacity(0.65),
+            accentColor.withValues(alpha: 0.25),
+            accentColor.withValues(alpha: 0.65),
             accentColor,
           ],
           stops: const [0.0, 0.55, 1.0],
@@ -132,8 +132,8 @@ class _SmokePainter extends CustomPainter {
         Paint()
           ..shader = RadialGradient(
             colors: [
-              accentColor.withOpacity(p.opacity * edgeFade * 0.9),
-              accentColor.withOpacity(0),
+              accentColor.withValues(alpha: p.opacity * edgeFade * 0.9),
+              accentColor.withValues(alpha: 0),
             ],
           ).createShader(Rect.fromCircle(center: center, radius: drawR)),
       );
@@ -152,7 +152,7 @@ class _SmokePainter extends CustomPainter {
           ..shader = LinearGradient(
             colors: [
               Colors.transparent,
-              Colors.white.withOpacity(0.09),
+              Colors.white.withValues(alpha: 0.09),
               Colors.transparent,
             ],
             stops: const [0.0, 0.5, 1.0],
@@ -171,7 +171,7 @@ class _SmokePainter extends CustomPainter {
         Offset(fillW, 2),
         Offset(fillW, h - 2),
         Paint()
-          ..color = accentColor.withOpacity(0.12 * glow)
+          ..color = accentColor.withValues(alpha: 0.12 * glow)
           ..strokeWidth = 12
           ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 5),
       );
@@ -181,7 +181,7 @@ class _SmokePainter extends CustomPainter {
         Offset(fillW, 1),
         Offset(fillW, h - 1),
         Paint()
-          ..color = accentColor.withOpacity(0.9 * glow)
+          ..color = accentColor.withValues(alpha: 0.9 * glow)
           ..strokeWidth = 1.2
           ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 1.5),
       );
@@ -193,7 +193,7 @@ class _SmokePainter extends CustomPainter {
         Offset(fillW, sparkY),
         sparkR,
         Paint()
-          ..color = Colors.white.withOpacity(0.8 * glow)
+          ..color = Colors.white.withValues(alpha: 0.8 * glow)
           ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 2),
       );
     }
@@ -207,7 +207,7 @@ class _SmokePainter extends CustomPainter {
           Radius.circular(barRadius + 1),
         ),
         Paint()
-          ..color = accentColor.withOpacity(0.15 * aura)
+          ..color = accentColor.withValues(alpha: 0.15 * aura)
           ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 4),
       );
     }

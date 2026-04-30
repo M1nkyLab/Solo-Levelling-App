@@ -62,7 +62,7 @@ class _ShadowCardState extends State<ShadowCard>
   @override
   Widget build(BuildContext context) {
     final accent = widget.accentColor ?? ShadowColors.amethyst;
-    final glowColor = accent.withOpacity(0.35);
+    final glowColor = accent.withValues(alpha: 0.35);
 
     return GestureDetector(
       onTap: widget.onTap,
@@ -74,8 +74,8 @@ class _ShadowCardState extends State<ShadowCard>
         builder: (context, child) {
           return AnimatedContainer(
             duration: const Duration(milliseconds: 120),
-            transform: Matrix4.identity()
-              ..scale(_pressed ? 0.97 : 1.0),
+            transform: Matrix4.diagonal3Values(
+              _pressed ? 0.97 : 1.0, _pressed ? 0.97 : 1.0, 1.0),
             transformAlignment: Alignment.center,
             decoration: BoxDecoration(
               color: ShadowColors.surface,
@@ -83,15 +83,14 @@ class _ShadowCardState extends State<ShadowCard>
               boxShadow: [
                 // Ambient purple glow – tighter and sharper
                 BoxShadow(
-                  color: glowColor.withOpacity(
-                      glowColor.opacity * _glowAnim.value),
+                  color: glowColor.withValues(alpha: glowColor.a * _glowAnim.value),
                   blurRadius: 12,
                   spreadRadius: 0,
                   offset: const Offset(0, 4),
                 ),
                 // Subtle inner depth shadow
                 BoxShadow(
-                  color: Colors.black.withOpacity(0.4),
+                  color: Colors.black.withValues(alpha: 0.4),
                   blurRadius: 6,
                   offset: const Offset(0, 2),
                 ),
@@ -140,10 +139,10 @@ class _CardContent extends StatelessWidget {
             decoration: BoxDecoration(
               color: ShadowColors.surfaceAlt,
               borderRadius: BorderRadius.circular(14),
-              border: Border.all(color: accent.withOpacity(0.4), width: 1.2),
+              border: Border.all(color: accent.withValues(alpha: 0.4), width: 1.2),
               boxShadow: [
                 BoxShadow(
-                  color: accent.withOpacity(0.3),
+                  color: accent.withValues(alpha: 0.3),
                   blurRadius: 12,
                   spreadRadius: 1,
                 ),

@@ -3,7 +3,8 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../logic/player_provider.dart';
 import '../logic/quest_provider.dart';
-import '../logic/system_logic.dart';
+import '../models/daily_quest.dart';
+import '../models/player.dart';
 import '../theme/app_theme.dart';
 import '../widgets/player_status_header.dart';
 import '../widgets/quest_tracker.dart';
@@ -104,12 +105,12 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
 
   //  Daily Quest section
   // ─────────────────────────────────────────────
-  Widget _buildQuestSection(player, quests) {
+  Widget _buildQuestSection(Player player, List<DailyQuest> quests) {
     final today = DateTime.now();
     final dateStr =
         '${_weekday(today.weekday)}, ${today.day} ${_month(today.month)}';
 
-    final allDone = quests.every((q) => q.isCompleted);
+    final allDone = quests.every((DailyQuest q) => q.isCompleted);
 
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -127,7 +128,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
                   borderRadius: BorderRadius.circular(2),
                   boxShadow: [
                     BoxShadow(
-                      color: ShadowColors.amethyst.withOpacity(0.6),
+                      color: ShadowColors.amethyst.withValues(alpha: 0.6),
                       blurRadius: 8,
                     ),
                   ],
@@ -210,10 +211,10 @@ class _CompletionBanner extends StatelessWidget {
       width: double.infinity,
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       decoration: BoxDecoration(
-        color: ShadowColors.success.withOpacity(0.1),
+        color: ShadowColors.success.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(12),
         border:
-            Border.all(color: ShadowColors.success.withOpacity(0.4)),
+            Border.all(color: ShadowColors.success.withValues(alpha: 0.4)),
       ),
       child: Row(
         children: [

@@ -52,14 +52,14 @@ class QuestTracker extends StatelessWidget {
         borderRadius: BorderRadius.circular(16),
         border: Border.all(
           color: _isDone
-              ? ShadowColors.success.withOpacity(0.4)
-              : ShadowColors.amethyst.withOpacity(0.15),
+              ? ShadowColors.success.withValues(alpha: 0.4)
+              : ShadowColors.amethyst.withValues(alpha: 0.15),
           width: 1.2,
         ),
         boxShadow: [
           BoxShadow(
             color: (_isDone ? ShadowColors.success : ShadowColors.amethyst)
-                .withOpacity(0.1),
+                .withValues(alpha: 0.1),
             blurRadius: 8,
             spreadRadius: 0,
             offset: const Offset(0, 3),
@@ -80,7 +80,7 @@ class QuestTracker extends StatelessWidget {
                   color: ShadowColors.surfaceAlt,
                   borderRadius: BorderRadius.circular(10),
                   border: Border.all(
-                      color: _accentColor.withOpacity(0.4), width: 1),
+                      color: _accentColor.withValues(alpha: 0.4), width: 1),
                 ),
                 child: Icon(icon, color: _accentColor, size: 20),
               ),
@@ -190,14 +190,14 @@ class _ControlButton extends StatelessWidget {
           borderRadius: BorderRadius.circular(10),
           border: Border.all(
             color: active
-                ? (isPrimary ? color : color.withOpacity(0.4))
-                : ShadowColors.textDisabled.withOpacity(0.2),
+                ? (isPrimary ? color : color.withValues(alpha: 0.4))
+                : ShadowColors.textDisabled.withValues(alpha: 0.2),
             width: isPrimary ? 1.5 : 1,
           ),
           boxShadow: isPrimary && active
               ? [
                   BoxShadow(
-                    color: color.withOpacity(0.2),
+                    color: color.withValues(alpha: 0.2),
                     blurRadius: 6,
                     spreadRadius: 0,
                   )
