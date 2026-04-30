@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../theme/app_theme.dart';
+import '../widgets/player_status_header.dart';
 import '../widgets/quest_tracker.dart';
 import '../widgets/smoky_progress_bar.dart';
 
@@ -50,12 +51,13 @@ class _DashboardScreenState extends State<DashboardScreen>
     with SingleTickerProviderStateMixin {
   // ── Player data (replace with Supabase model later) ──
   final String _username   = 'Sung Jin-Woo';
-  final String _title      = 'E-Rank';
-  final int    _level      = 1;
+  final int    _level      = 9;   // level 9 → rank-up ready!
   final int    _currentHp  = 80;
   final int    _maxHp      = 100;
   final int    _currentMp  = 35;
   final int    _maxMp      = 50;
+  final int    _currentXp  = 340;
+  final int    _maxXp      = 480;
 
   late final _QuestState _quest;
   late AnimationController _headerAnim;
@@ -97,11 +99,18 @@ class _DashboardScreenState extends State<DashboardScreen>
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const SizedBox(height: 20),
-                    _buildPlayerHeader(),
-                    const SizedBox(height: 8),
-                    _buildHpMpBars(),
-                    const SizedBox(height: 32),
+                    const SizedBox(height: 12),
+                    // ── Unified status header ──────────────────────────
+                    PlayerStatusHeader(
+                      level:      _level,
+                      currentXp:  _currentXp,
+                      maxXp:      _maxXp,
+                      currentHp:  _currentHp,
+                      maxHp:      _maxHp,
+                      currentMp:  _currentMp,
+                      maxMp:      _maxMp,
+                    ),
+                    const SizedBox(height: 24),
                     _buildQuestSection(),
                     const SizedBox(height: 40),
                   ],
@@ -133,112 +142,7 @@ class _DashboardScreenState extends State<DashboardScreen>
     );
   }
 
-  // ─────────────────────────────────────────────
-  //  Player identity header
-  // ─────────────────────────────────────────────
-  Widget _buildPlayerHeader() {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 20),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.end,
-        children: [
-          // Avatar circle with glow ring
-          Container(
-            width: 62,
-            height: 62,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              color: ShadowColors.surface,
-              border: Border.all(color: ShadowColors.amethyst, width: 2),
-              boxShadow: [
-                BoxShadow(
-                  color: ShadowColors.amethyst.withOpacity(0.4),
-                  blurRadius: 16,
-                  spreadRadius: 2,
-                ),
-              ],
-            ),
-            child: const Icon(Icons.person_rounded,
-                color: ShadowColors.amethystLight, size: 32),
-          ),
-          const SizedBox(width: 14),
 
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // Title badge
-                Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
-                  decoration: BoxDecoration(
-                    color: ShadowColors.amethyst.withOpacity(0.15),
-                    borderRadius: BorderRadius.circular(20),
-                    border: Border.all(
-                        color: ShadowColors.amethyst.withOpacity(0.5)),
-                  ),
-                  child: Text(
-                    _title,
-                    style: ShadowTextTheme.mono(10,
-                        color: ShadowColors.amethystLight,
-                        weight: FontWeight.bold),
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Text(_username,
-                    style: ShadowTextTheme.headline(20)),
-              ],
-            ),
-          ),
-
-          // Level badge
-          Column(
-            children: [
-              Text('LEVEL',
-                  style: ShadowTextTheme.mono(9,
-                      color: ShadowColors.textSecondary)),
-              Text(
-                '$_level',
-                style: ShadowTextTheme.mono(32,
-                    color: ShadowColors.xpGold, weight: FontWeight.bold),
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-
-  // ─────────────────────────────────────────────
-  //  HP / MP progress bars
-  // ─────────────────────────────────────────────
-  Widget _buildHpMpBars() {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 20),
-      child: Column(
-        children: [
-          const SizedBox(height: 16),
-          _StatBar(
-            label: 'HP',
-            current: _currentHp,
-            max: _maxHp,
-            color: ShadowColors.hpRed,
-            icon: Icons.favorite_rounded,
-          ),
-          const SizedBox(height: 10),
-          _StatBar(
-            label: 'MP',
-            current: _currentMp,
-            max: _maxMp,
-            color: ShadowColors.icyCyan,
-            icon: Icons.water_drop_rounded,
-          ),
-        ],
-      ),
-    );
-  }
-
-  // ─────────────────────────────────────────────
   //  Daily Quest section
   // ─────────────────────────────────────────────
   Widget _buildQuestSection() {
@@ -299,11 +203,17 @@ class _DashboardScreenState extends State<DashboardScreen>
             onSubtract: () => _bump(() {
               if (_quest.pushupsDone > 0) _quest.pushupsDone--;
             }),
+            onLongAdd: () => _bump(() {
+              _quest.pushupsDone = (_quest.pushupsDone + 10).clamp(0, _quest.pushupsTarget);
+            }),
+            onLongSubtract: () => _bump(() {
+              _quest.pushupsDone = (_quest.pushupsDone - 10).clamp(0, _quest.pushupsTarget);
+            }),
           ),
 
           QuestTracker(
             label: 'Sit-ups',
-            icon: Icons.self_improvement_rounded,
+            icon: Icons.accessibility_new_rounded,
             completed: _quest.situpsDone,
             target: _quest.situpsTarget,
             onAdd: () => _bump(() {
@@ -314,11 +224,17 @@ class _DashboardScreenState extends State<DashboardScreen>
             onSubtract: () => _bump(() {
               if (_quest.situpsDone > 0) _quest.situpsDone--;
             }),
+            onLongAdd: () => _bump(() {
+              _quest.situpsDone = (_quest.situpsDone + 10).clamp(0, _quest.situpsTarget);
+            }),
+            onLongSubtract: () => _bump(() {
+              _quest.situpsDone = (_quest.situpsDone - 10).clamp(0, _quest.situpsTarget);
+            }),
           ),
 
           QuestTracker(
             label: 'Squats',
-            icon: Icons.directions_run_rounded,
+            icon: Icons.sports_gymnastics_rounded,
             completed: _quest.squatsDone,
             target: _quest.squatsTarget,
             onAdd: () => _bump(() {
@@ -329,11 +245,17 @@ class _DashboardScreenState extends State<DashboardScreen>
             onSubtract: () => _bump(() {
               if (_quest.squatsDone > 0) _quest.squatsDone--;
             }),
+            onLongAdd: () => _bump(() {
+              _quest.squatsDone = (_quest.squatsDone + 10).clamp(0, _quest.squatsTarget);
+            }),
+            onLongSubtract: () => _bump(() {
+              _quest.squatsDone = (_quest.squatsDone - 10).clamp(0, _quest.squatsTarget);
+            }),
           ),
 
           QuestTracker(
             label: 'Running',
-            icon: Icons.route_rounded,
+            icon: Icons.directions_run_rounded,
             completed: _quest.runSteps,
             target: _quest.runTarget,
             unit: 'km',
@@ -343,6 +265,12 @@ class _DashboardScreenState extends State<DashboardScreen>
             }),
             onSubtract: () => _bump(() {
               if (_quest.runSteps > 0) _quest.runSteps--;
+            }),
+            onLongAdd: () => _bump(() {
+              _quest.runSteps = (_quest.runSteps + 10).clamp(0, _quest.runTarget);
+            }),
+            onLongSubtract: () => _bump(() {
+              _quest.runSteps = (_quest.runSteps - 10).clamp(0, _quest.runTarget);
             }),
           ),
         ],

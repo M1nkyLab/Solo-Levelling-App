@@ -14,6 +14,8 @@ class QuestTracker extends StatelessWidget {
   final bool isDecimal;       // true for run (0.5 km steps)
   final VoidCallback onAdd;
   final VoidCallback onSubtract;
+  final VoidCallback? onLongAdd;
+  final VoidCallback? onLongSubtract;
 
   const QuestTracker({
     super.key,
@@ -23,6 +25,8 @@ class QuestTracker extends StatelessWidget {
     required this.target,
     required this.onAdd,
     required this.onSubtract,
+    this.onLongAdd,
+    this.onLongSubtract,
     this.unit = 'reps',
     this.isDecimal = false,
   });
@@ -55,9 +59,9 @@ class QuestTracker extends StatelessWidget {
         boxShadow: [
           BoxShadow(
             color: (_isDone ? ShadowColors.success : ShadowColors.amethyst)
-                .withOpacity(0.12),
-            blurRadius: 16,
-            spreadRadius: 1,
+                .withOpacity(0.1),
+            blurRadius: 8,
+            spreadRadius: 0,
             offset: const Offset(0, 3),
           ),
         ],
@@ -117,6 +121,7 @@ class QuestTracker extends StatelessWidget {
               _ControlButton(
                 icon: Icons.remove,
                 onTap: onSubtract,
+                onLongPress: onLongSubtract,
                 enabled: completed > 0,
                 color: ShadowColors.textSecondary,
               ),
@@ -126,9 +131,10 @@ class QuestTracker extends StatelessWidget {
               _ControlButton(
                 icon: _isDone ? Icons.check_rounded : Icons.add_rounded,
                 onTap: _isDone ? () {} : onAdd,
+                onLongPress: _isDone ? null : onLongAdd,
                 enabled: !_isDone,
                 color: _isDone ? ShadowColors.success : ShadowColors.amethyst,
-                filled: true,
+                isPrimary: true,
               ),
             ],
           ),
@@ -152,45 +158,52 @@ class QuestTracker extends StatelessWidget {
 class _ControlButton extends StatelessWidget {
   final IconData icon;
   final VoidCallback onTap;
+  final VoidCallback? onLongPress;
   final bool enabled;
   final Color color;
-  final bool filled;
+  final bool isPrimary;
 
   const _ControlButton({
     required this.icon,
     required this.onTap,
+    this.onLongPress,
     required this.color,
     this.enabled = true,
-    this.filled = false,
+    this.isPrimary = false,
   });
 
   @override
   Widget build(BuildContext context) {
     return GestureDetector(
       onTap: enabled ? onTap : null,
+      onLongPress: enabled ? onLongPress : null,
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 150),
         width: 36,
         height: 36,
         decoration: BoxDecoration(
-          color: filled
-              ? (enabled ? color : ShadowColors.surfaceAlt)
-              : ShadowColors.surfaceAlt,
+          color: ShadowColors.surfaceAlt,
           borderRadius: BorderRadius.circular(10),
-          border: filled
-              ? null
-              : Border.all(
-                  color: enabled
-                      ? color.withOpacity(0.4)
-                      : ShadowColors.textDisabled.withOpacity(0.2),
-                ),
+          border: Border.all(
+            color: enabled
+                ? (isPrimary ? color : color.withOpacity(0.4))
+                : ShadowColors.textDisabled.withOpacity(0.2),
+            width: isPrimary ? 1.5 : 1,
+          ),
+          boxShadow: isPrimary && enabled
+              ? [
+                  BoxShadow(
+                    color: color.withOpacity(0.2),
+                    blurRadius: 6,
+                    spreadRadius: 0,
+                  )
+                ]
+              : null,
         ),
         child: Icon(
           icon,
           size: 18,
-          color: filled
-              ? Colors.white
-              : (enabled ? color : ShadowColors.textDisabled),
+          color: enabled ? color : ShadowColors.textDisabled,
         ),
       ),
     );

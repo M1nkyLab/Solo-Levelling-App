@@ -39,9 +39,9 @@ class ShadowColors {
 class ShadowTextTheme {
   ShadowTextTheme._();
 
-  // Cinzel – sharp, regal serif for headings
+  // Orbitron – sharp, aggressive sans-serif for headings
   static TextStyle headline(double size, {FontWeight weight = FontWeight.bold}) =>
-      GoogleFonts.cinzel(
+      GoogleFonts.orbitron(
         fontSize: size,
         fontWeight: weight,
         color: ShadowColors.textPrimary,

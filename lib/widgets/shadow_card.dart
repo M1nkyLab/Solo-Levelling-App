@@ -81,18 +81,18 @@ class _ShadowCardState extends State<ShadowCard>
               color: ShadowColors.surface,
               borderRadius: BorderRadius.circular(16),
               boxShadow: [
-                // Ambient purple glow – breathes slowly
+                // Ambient purple glow – tighter and sharper
                 BoxShadow(
                   color: glowColor.withOpacity(
                       glowColor.opacity * _glowAnim.value),
-                  blurRadius: 24,
-                  spreadRadius: 2,
+                  blurRadius: 12,
+                  spreadRadius: 0,
                   offset: const Offset(0, 4),
                 ),
                 // Subtle inner depth shadow
                 BoxShadow(
-                  color: Colors.black.withOpacity(0.6),
-                  blurRadius: 8,
+                  color: Colors.black.withOpacity(0.4),
+                  blurRadius: 6,
                   offset: const Offset(0, 2),
                 ),
               ],

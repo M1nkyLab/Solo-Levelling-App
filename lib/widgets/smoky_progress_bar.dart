@@ -157,9 +157,9 @@ class _SmokePainter extends CustomPainter {
         Offset(fillW, 2),
         Offset(fillW, h - 2),
         Paint()
-          ..color = accentColor.withOpacity(0.18 * glow)
-          ..strokeWidth = 22
-          ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 10),
+          ..color = accentColor.withOpacity(0.12 * glow)
+          ..strokeWidth = 12
+          ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 5),
       );
 
       // Inner bright line
@@ -168,19 +168,19 @@ class _SmokePainter extends CustomPainter {
         Offset(fillW, h - 1),
         Paint()
           ..color = accentColor.withOpacity(0.9 * glow)
-          ..strokeWidth = 1.8
-          ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 2),
+          ..strokeWidth = 1.2
+          ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 1.5),
       );
 
       // Tiny spark at the leading tip
       final double sparkY = h / 2;
-      final double sparkR = 3.5 * glow;
+      final double sparkR = 2.5 * glow;
       canvas.drawCircle(
         Offset(fillW, sparkY),
         sparkR,
         Paint()
-          ..color = Colors.white.withOpacity(0.7 * glow)
-          ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 4),
+          ..color = Colors.white.withOpacity(0.8 * glow)
+          ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 2),
       );
     }
 
@@ -189,12 +189,12 @@ class _SmokePainter extends CustomPainter {
       final double aura = 0.45 + 0.55 * math.sin(smokeTime * 2.8);
       canvas.drawRRect(
         RRect.fromRectAndRadius(
-          Rect.fromLTWH(-4, -2, w + 8, h + 4),
-          Radius.circular(barRadius + 2),
+          Rect.fromLTWH(-2, -1, w + 4, h + 2),
+          Radius.circular(barRadius + 1),
         ),
         Paint()
-          ..color = accentColor.withOpacity(0.18 * aura)
-          ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 8),
+          ..color = accentColor.withOpacity(0.15 * aura)
+          ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 4),
       );
     }
   }
