@@ -8,6 +8,8 @@ import '../models/player.dart';
 import '../theme/app_theme.dart';
 import '../widgets/player_status_header.dart';
 import '../widgets/quest_tracker.dart';
+import '../widgets/daily_countdown_timer.dart';
+import 'profile_screen.dart';
 
 // ─────────────────────────────────────────────
 //  Dashboard Screen
@@ -96,7 +98,12 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
         IconButton(
           icon: const Icon(Icons.person_outline_rounded,
               color: ShadowColors.amethystLight),
-          onPressed: () {},
+          onPressed: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(builder: (context) => const ProfileScreen()),
+            );
+          },
         ),
       ],
     );
@@ -117,6 +124,10 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          // ── Timer & Date Row ──
+          const Center(child: DailyCountdownTimer()),
+          const SizedBox(height: 24),
+
           // Section header
           Row(
             children: [
