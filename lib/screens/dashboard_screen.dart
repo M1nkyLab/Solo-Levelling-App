@@ -146,8 +146,15 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
                 ),
               ),
               const SizedBox(width: 10),
-              Text('DAILY QUEST', style: ShadowTextTheme.headline(18)),
-              const Spacer(),
+              Expanded(
+                child: Text(
+                  'DAILY QUEST',
+                  style: ShadowTextTheme.headline(18),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+              const SizedBox(width: 10),
               Text(dateStr,
                   style: ShadowTextTheme.mono(11,
                       color: ShadowColors.textSecondary)),

@@ -86,34 +86,37 @@ class _DailyCountdownTimerState extends ConsumerState<DailyCountdownTimer> {
     return ValueListenableBuilder<Duration>(
       valueListenable: _remainingTime,
       builder: (context, duration, child) {
-        return Container(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-          decoration: BoxDecoration(
-            color: Colors.red.withValues(alpha: 0.05),
-            borderRadius: BorderRadius.circular(8),
-            border: Border.all(color: Colors.red.withValues(alpha: 0.2)),
-          ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const Icon(Icons.timer_outlined, color: Colors.redAccent, size: 14),
-              const SizedBox(width: 8),
-              Text(
-                'TIME REMAINING [ ${_formatDuration(duration)} ]',
-                style: ShadowTextTheme.mono(
-                  12,
-                  color: Colors.redAccent,
-                  weight: FontWeight.bold,
-                ).copyWith(
-                  shadows: [
-                    const Shadow(
-                      color: Colors.redAccent,
-                      blurRadius: 8,
-                    ),
-                  ],
+        return FittedBox(
+          fit: BoxFit.scaleDown,
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            decoration: BoxDecoration(
+              color: Colors.red.withValues(alpha: 0.05),
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(color: Colors.red.withValues(alpha: 0.2)),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Icon(Icons.timer_outlined, color: Colors.redAccent, size: 14),
+                const SizedBox(width: 8),
+                Text(
+                  'TIME REMAINING [ ${_formatDuration(duration)} ]',
+                  style: ShadowTextTheme.mono(
+                    12,
+                    color: Colors.redAccent,
+                    weight: FontWeight.bold,
+                  ).copyWith(
+                    shadows: [
+                      const Shadow(
+                        color: Colors.redAccent,
+                        blurRadius: 8,
+                      ),
+                    ],
+                  ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         );
       },
