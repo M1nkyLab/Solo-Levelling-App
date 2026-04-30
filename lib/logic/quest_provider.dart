@@ -33,15 +33,7 @@ class QuestNotifier extends Notifier<List<DailyQuest>> {
   DailyQuest _updateQuest(DailyQuest quest, int amount, PlayerRank rank) {
     final target = quest.getActualReps(rank);
     final newReps = (quest.currentReps + amount).clamp(0, target);
-    
-    final wasCompleted = quest.isCompleted;
     final isCompleted = newReps >= target;
-
-    if (!wasCompleted && isCompleted) {
-      // Grant individual reward
-      final xpReward = quest.id == 'run' ? 150 : 100;
-      ref.read(playerProvider.notifier).addXp(xpReward);
-    }
 
     return quest.copyWith(currentReps: newReps, isCompleted: isCompleted);
   }
@@ -49,8 +41,22 @@ class QuestNotifier extends Notifier<List<DailyQuest>> {
   void _checkAllDone() {
     final allDone = state.every((q) => q.isCompleted);
     if (allDone) {
-      // Grant daily completion bonus (fires once per session when all quests complete)
+      // ── Reward only when EVERYTHING is complete ──
+      // Grant a large EXP reward
       ref.read(playerProvider.notifier).addXp(500);
+      
+      // ── Difficulty Scaling & Reset ──
+      // In this system, we reset the reps and increase the baseline difficulty
+      // to simulate the "Next Day" or "Rank Progression" feel.
+      state = [
+        for (final q in state)
+          q.copyWith(
+            currentReps: 0,
+            isCompleted: false,
+            // Increase base difficulty slightly for next time
+            baseReps: (q.baseReps * 1.05).round(), 
+          ),
+      ];
     }
   }
 }
