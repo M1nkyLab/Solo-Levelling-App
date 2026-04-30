@@ -42,6 +42,20 @@ class PlayerNotifier extends StateNotifier<Player> {
     );
   }
 
+  void executePenalty() {
+    // ── Penalty: Loss of 30% Max HP and 20% of current EXP ──
+    final hpLoss = (state.maxHp * 0.3).round();
+    final xpLoss = (state.currentExp * 0.2).round();
+
+    final newHp = (state.currentHp - hpLoss).clamp(1, state.maxHp);
+    final newXp = (state.currentExp - xpLoss).clamp(0, state.maxExp);
+
+    state = state.copyWith(
+      currentHp: newHp,
+      currentExp: newXp,
+    );
+  }
+
   PlayerRank _determineRankFromLevel(int level) {
     if (level >= 80) return PlayerRank.S;
     if (level >= 60) return PlayerRank.A;

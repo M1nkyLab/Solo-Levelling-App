@@ -1,15 +1,18 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../logic/player_provider.dart';
+import '../logic/quest_provider.dart';
 import '../theme/app_theme.dart';
 
-class DailyCountdownTimer extends StatefulWidget {
+class DailyCountdownTimer extends ConsumerStatefulWidget {
   const DailyCountdownTimer({super.key});
 
   @override
-  State<DailyCountdownTimer> createState() => _DailyCountdownTimerState();
+  ConsumerState<DailyCountdownTimer> createState() => _DailyCountdownTimerState();
 }
 
-class _DailyCountdownTimerState extends State<DailyCountdownTimer> {
+class _DailyCountdownTimerState extends ConsumerState<DailyCountdownTimer> {
   late final Timer _timer;
   late final ValueNotifier<Duration> _remainingTime;
 
@@ -37,8 +40,30 @@ class _DailyCountdownTimerState extends State<DailyCountdownTimer> {
   }
 
   void _executePenalty() {
-    debugPrint('SYSTEM NOTIFICATION: DAILY QUEST FAILED. EXECUTING PENALTY...');
-    // TODO: Implement actual penalty logic (e.g., loss of XP, rank demotion)
+    // ── Check if quests are actually incomplete ──
+    final quests = ref.read(questProvider);
+    final allDone = quests.every((q) => q.isCompleted);
+
+    if (!allDone) {
+      debugPrint('SYSTEM NOTIFICATION: DAILY QUEST FAILED. EXECUTING PENALTY...');
+      
+      // ── Trigger punishment in providers ──
+      ref.read(playerProvider.notifier).executePenalty();
+      ref.read(questProvider.notifier).resetFailedQuests();
+
+      // Notify the user via a snackbar (System Popup)
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            backgroundColor: ShadowColors.hpRed,
+            content: Text(
+              'PENALTY QUEST TRIGGERED: STATS REDUCED',
+              style: ShadowTextTheme.mono(12, color: Colors.white, weight: FontWeight.bold),
+            ),
+          ),
+        );
+      }
+    }
   }
 
   @override

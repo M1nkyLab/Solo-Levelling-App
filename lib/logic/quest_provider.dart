@@ -59,6 +59,16 @@ class QuestNotifier extends Notifier<List<DailyQuest>> {
       ];
     }
   }
+
+  void resetFailedQuests() {
+    state = [
+      for (final q in state)
+        q.copyWith(
+          currentReps: 0,
+          isCompleted: false,
+        ),
+    ];
+  }
 }
 
 final questProvider = NotifierProvider<QuestNotifier, List<DailyQuest>>(() {
