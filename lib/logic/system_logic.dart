@@ -108,24 +108,6 @@ abstract final class SystemLogic {
     return baseMaxHp + (safeVit * hpPerVitality);
   }
 
-  // ── MP ───────────────────────────────────────────────────────────────────
-
-  /// Base Max MP before any Intelligence bonus.
-  static const int baseMaxMp = 50;
-
-  /// MP gained per point of Intelligence.
-  static const int mpPerIntelligence = 3;
-
-  /// Calculates the hunter's maximum MP from their Intelligence stat.
-  ///
-  /// Formula: `baseMaxMp + (intelligence × mpPerIntelligence)`
-  ///
-  /// [intelligence] must be ≥ 0; negative values are clamped to 0.
-  static int calculateMaxMp({required int intelligence}) {
-    final int safeInt = intelligence.clamp(0, 9999);
-    return baseMaxMp + (safeInt * mpPerIntelligence);
-  }
-
   // ── Rank ─────────────────────────────────────────────────────────────────
 
   /// Returns the [HunterRank] enum value for the given [totalLevel].

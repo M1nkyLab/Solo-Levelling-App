@@ -17,8 +17,6 @@ class ShadowColors {
   static const Color amethyst       = Color(0xFF8A2BE2); // Primary – glowing purple
   static const Color amethystLight  = Color(0xFFAB5CF7); // Hover / highlight
   static const Color amethystGlow   = Color(0x448A2BE2); // Shadow / glow tint
-  static const Color icyCyan        = Color(0xFF00FFFF); // Secondary – mana / MP
-  static const Color icyCyanGlow    = Color(0x3300FFFF); // Cyan glow tint
 
   // Text
   static const Color textPrimary    = Color(0xFFE8E8F0); // Off-white headlines
@@ -27,10 +25,9 @@ class ShadowColors {
 
   // Status
   static const Color hpRed          = Color(0xFFE53935); // Health bar
-  static const Color mpBlue         = icyCyan;           // Mana bar
-  static const Color xpGold         = Color(0xFFFFD700); // XP / reward
   static const Color success        = Color(0xFF4CAF50);
   static const Color warning        = Color(0xFFFFA726);
+  static const Color xpGold         = Color(0xFFFFD700); // XP / reward
 }
 
 // ─────────────────────────────────────────────
@@ -81,7 +78,7 @@ class AppTheme {
         brightness: Brightness.dark,
         primary:          ShadowColors.amethyst,
         onPrimary:        ShadowColors.textPrimary,
-        secondary:        ShadowColors.icyCyan,
+        secondary:        ShadowColors.amethystLight,
         onSecondary:      ShadowColors.obsidian,
         surface:          ShadowColors.surface,
         onSurface:        ShadowColors.textPrimary,

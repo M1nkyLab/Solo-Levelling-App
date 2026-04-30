@@ -55,8 +55,6 @@ class _DashboardScreenState extends State<DashboardScreen>
   int    _level      = 9;
   int    _currentHp  = 80;
   int    _maxHp      = 100;
-  int    _currentMp  = 35;
-  int    _maxMp      = 50;
   int    _currentXp  = 340;
   int    _maxXp      = 480;
 
@@ -153,8 +151,6 @@ class _DashboardScreenState extends State<DashboardScreen>
                       maxXp:      _maxXp,
                       currentHp:  _currentHp,
                       maxHp:      _maxHp,
-                      currentMp:  _currentMp,
-                      maxMp:      _maxMp,
                     ),
                     const SizedBox(height: 24),
                     _buildQuestSection(),

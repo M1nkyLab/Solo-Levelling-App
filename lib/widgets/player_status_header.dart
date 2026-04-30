@@ -32,10 +32,6 @@ class PlayerStatusHeader extends StatefulWidget {
   final int currentHp;
   final int maxHp;
 
-  // ── MP ────────────────────────────────────────────────────────────────────
-  final int currentMp;
-  final int maxMp;
-
   const PlayerStatusHeader({
     super.key,
     required this.level,
@@ -44,8 +40,6 @@ class PlayerStatusHeader extends StatefulWidget {
     required this.maxXp,
     required this.currentHp,
     required this.maxHp,
-    required this.currentMp,
-    required this.maxMp,
   });
 
   @override
@@ -143,18 +137,6 @@ class _PlayerStatusHeaderState extends State<PlayerStatusHeader>
               current: widget.currentHp,
               max: widget.maxHp,
               color: ShadowColors.hpRed,
-              barHeight: 8,
-              particleCount: 18,
-            ),
-
-            const SizedBox(height: 8),
-
-            // ── MP bar ────────────────────────────────────────────────────
-            _StatSection(
-              label: 'MP',
-              current: widget.currentMp,
-              max: widget.maxMp,
-              color: ShadowColors.icyCyan,
               barHeight: 8,
               particleCount: 18,
             ),

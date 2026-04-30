@@ -51,6 +51,10 @@ class _SmokePainter extends CustomPainter {
   void paint(Canvas canvas, Size size) {
     final double w = size.width;
     final double h = size.height;
+
+    // Guard: skip painting if laid out with zero size
+    if (w <= 0 || h <= 0) return;
+
     final double fillW = (w * fillProgress).clamp(0.0, w);
 
     // ── 1. Track ────────────────────────────────────────────────
@@ -66,6 +70,9 @@ class _SmokePainter extends CustomPainter {
       Rect.fromLTWH(0, 0, fillW, h),
       Radius.circular(barRadius),
     );
+
+    // Guard: skip fill painting if fill width is negligibly small
+    if (fillW < 1) return;
 
     // ── 2. Clip to filled region ─────────────────────────────────
     canvas.save();
@@ -115,36 +122,43 @@ class _SmokePainter extends CustomPainter {
 
       final Offset center = Offset(px, py);
 
-      // Soft radial gradient puff
+      // Soft radial gradient puff — skip if radius would be zero
+      final double drawR = r * 2.5;
+      if (drawR < 0.5) continue;
+
       canvas.drawCircle(
         center,
-        r * 2.5,
+        drawR,
         Paint()
           ..shader = RadialGradient(
             colors: [
               accentColor.withOpacity(p.opacity * edgeFade * 0.9),
               accentColor.withOpacity(0),
             ],
-          ).createShader(Rect.fromCircle(center: center, radius: r * 2.5)),
+          ).createShader(Rect.fromCircle(center: center, radius: drawR)),
       );
     }
 
     // ── 5. Shimmer sweep ─────────────────────────────────────────
     // A bright band that slowly sweeps across the filled area
     final double shimmerPos = (smokeTime * 0.35 % 1.5 - 0.25) * fillW;
-    canvas.drawRRect(
-      fillRRect,
-      Paint()
-        ..shader = LinearGradient(
-          colors: [
-            Colors.transparent,
-            Colors.white.withOpacity(0.09),
-            Colors.transparent,
-          ],
-          stops: const [0.0, 0.5, 1.0],
-        ).createShader(
-            Rect.fromLTWH(shimmerPos - 80, 0, 160, h)),
-    );
+    // Only draw shimmer if the shader rect has a non-zero width
+    const double shimmerW = 160.0;
+    final Rect shimmerRect = Rect.fromLTWH(shimmerPos - shimmerW / 2, 0, shimmerW, h);
+    if (shimmerRect.width > 0 && shimmerRect.height > 0) {
+      canvas.drawRRect(
+        fillRRect,
+        Paint()
+          ..shader = LinearGradient(
+            colors: [
+              Colors.transparent,
+              Colors.white.withOpacity(0.09),
+              Colors.transparent,
+            ],
+            stops: const [0.0, 0.5, 1.0],
+          ).createShader(shimmerRect),
+      );
+    }
 
     canvas.restore();
 

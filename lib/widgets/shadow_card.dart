@@ -215,24 +215,6 @@ class StatCard extends StatelessWidget {
   }
 }
 
-/// Mana-themed card using icy cyan accent.
-class ManaCard extends StatelessWidget {
-  final String title;
-  final String value;
-
-  const ManaCard({super.key, required this.title, required this.value});
-
-  @override
-  Widget build(BuildContext context) {
-    return ShadowCard(
-      title: title,
-      value: value,
-      icon: Icons.water_drop_rounded,
-      accentColor: ShadowColors.icyCyan,
-    );
-  }
-}
-
 /// HP card using the red health accent.
 class HpCard extends StatelessWidget {
   final int currentHp;
