@@ -133,6 +133,7 @@ class QuestTracker extends StatelessWidget {
                 onTap: _isDone ? () {} : onAdd,
                 onLongPress: _isDone ? null : onLongAdd,
                 enabled: !_isDone,
+                isDone: _isDone,
                 color: _isDone ? ShadowColors.success : ShadowColors.amethyst,
                 isPrimary: true,
               ),
@@ -160,6 +161,7 @@ class _ControlButton extends StatelessWidget {
   final VoidCallback onTap;
   final VoidCallback? onLongPress;
   final bool enabled;
+  final bool isDone;
   final Color color;
   final bool isPrimary;
 
@@ -169,11 +171,13 @@ class _ControlButton extends StatelessWidget {
     this.onLongPress,
     required this.color,
     this.enabled = true,
+    this.isDone = false,
     this.isPrimary = false,
   });
 
   @override
   Widget build(BuildContext context) {
+    final bool active = enabled || isDone;
     return GestureDetector(
       onTap: enabled ? onTap : null,
       onLongPress: enabled ? onLongPress : null,
@@ -185,12 +189,12 @@ class _ControlButton extends StatelessWidget {
           color: ShadowColors.surfaceAlt,
           borderRadius: BorderRadius.circular(10),
           border: Border.all(
-            color: enabled
+            color: active
                 ? (isPrimary ? color : color.withOpacity(0.4))
                 : ShadowColors.textDisabled.withOpacity(0.2),
             width: isPrimary ? 1.5 : 1,
           ),
-          boxShadow: isPrimary && enabled
+          boxShadow: isPrimary && active
               ? [
                   BoxShadow(
                     color: color.withOpacity(0.2),
@@ -203,7 +207,7 @@ class _ControlButton extends StatelessWidget {
         child: Icon(
           icon,
           size: 18,
-          color: enabled ? color : ShadowColors.textDisabled,
+          color: active ? color : ShadowColors.textDisabled,
         ),
       ),
     );

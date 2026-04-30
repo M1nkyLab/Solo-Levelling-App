@@ -49,19 +49,23 @@ class DashboardScreen extends StatefulWidget {
 
 class _DashboardScreenState extends State<DashboardScreen>
     with SingleTickerProviderStateMixin {
-  // ── Player data (replace with Supabase model later) ──
+  // ── Player data (mutable for state updates) ──
   final String _username   = 'Sung Jin-Woo';
-  final int    _level      = 9;   // level 9 → rank-up ready!
-  final int    _currentHp  = 80;
-  final int    _maxHp      = 100;
-  final int    _currentMp  = 35;
-  final int    _maxMp      = 50;
-  final int    _currentXp  = 340;
-  final int    _maxXp      = 480;
+  int    _level      = 9;
+  int    _currentHp  = 80;
+  int    _maxHp      = 100;
+  int    _currentMp  = 35;
+  int    _maxMp      = 50;
+  int    _currentXp  = 340;
+  int    _maxXp      = 480;
 
   late final _QuestState _quest;
   late AnimationController _headerAnim;
   late Animation<double> _fadeIn;
+
+  // Track rewarded quests
+  final Set<String> _rewardedQuests = {};
+  bool _allDoneBonusClaimed = false;
 
   @override
   void initState() {
@@ -80,9 +84,50 @@ class _DashboardScreenState extends State<DashboardScreen>
     super.dispose();
   }
 
+  void _addXp(int amount) {
+    setState(() {
+      _currentXp += amount;
+      while (_currentXp >= _maxXp) {
+        _currentXp -= _maxXp;
+        _level++;
+        _maxXp = SystemLogic.xpToNextLevel(_level);
+        // Bonus for leveling up
+        _maxHp = SystemLogic.calculateMaxHp(vitality: _level); // simple scaling for now
+        _currentHp = _maxHp;
+      }
+    });
+  }
+
+  void _checkQuestRewards() {
+    // Individual quest rewards
+    if (_quest.pushupsDone >= _quest.pushupsTarget && !_rewardedQuests.contains('pushups')) {
+      _rewardedQuests.add('pushups');
+      _addXp(100);
+    }
+    if (_quest.situpsDone >= _quest.situpsTarget && !_rewardedQuests.contains('situps')) {
+      _rewardedQuests.add('situps');
+      _addXp(100);
+    }
+    if (_quest.squatsDone >= _quest.squatsTarget && !_rewardedQuests.contains('squats')) {
+      _rewardedQuests.add('squats');
+      _addXp(100);
+    }
+    if (_quest.runSteps >= _quest.runTarget && !_rewardedQuests.contains('run')) {
+      _rewardedQuests.add('run');
+      _addXp(150);
+    }
+
+    // All-done bonus
+    if (_quest.allDone && !_allDoneBonusClaimed) {
+      _allDoneBonusClaimed = true;
+      _addXp(500);
+    }
+  }
+
   void _bump(VoidCallback change) {
     HapticFeedback.lightImpact();
     setState(change);
+    _checkQuestRewards();
   }
 
   @override
