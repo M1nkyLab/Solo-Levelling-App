@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'theme/app_theme.dart';
 import 'screens/dashboard_screen.dart';
 
@@ -14,7 +15,11 @@ void main() {
     ),
   );
 
-  runApp(const SoloLevellingApp());
+  runApp(
+    const ProviderScope(
+      child: SoloLevellingApp(),
+    ),
+  );
 }
 
 class SoloLevellingApp extends StatelessWidget {

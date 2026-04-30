@@ -4,6 +4,7 @@ class DailyQuest {
   final String id;
   final String title; 
   final int baseReps; 
+  final int currentReps;
   final int targetDayOfWeek; // 1 = Monday, ..., 7 = Sunday
   final bool isCompleted;
 
@@ -11,6 +12,7 @@ class DailyQuest {
     required this.id,
     required this.title,
     required this.baseReps,
+    this.currentReps = 0,
     required this.targetDayOfWeek,
     this.isCompleted = false,
   });
@@ -20,6 +22,7 @@ class DailyQuest {
     String? id,
     String? title,
     int? baseReps,
+    int? currentReps,
     int? targetDayOfWeek,
     bool? isCompleted,
   }) {
@@ -27,6 +30,7 @@ class DailyQuest {
       id: id ?? this.id,
       title: title ?? this.title,
       baseReps: baseReps ?? this.baseReps,
+      currentReps: currentReps ?? this.currentReps,
       targetDayOfWeek: targetDayOfWeek ?? this.targetDayOfWeek,
       isCompleted: isCompleted ?? this.isCompleted,
     );

@@ -10,6 +10,9 @@ dependencies:
   flutter:
     sdk: flutter
 
+  # State Management
+  flutter_riverpod: ^2.5.1
+
   # Google Fonts – Cinzel (serif headlines) + Roboto Mono + Rajdhani (body)
   google_fonts: ^6.2.1
 

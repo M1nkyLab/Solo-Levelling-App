@@ -5,12 +5,16 @@ class Player {
   final PlayerRank rank;
   final int currentExp;
   final int maxExp;
+  final int currentHp;
+  final int maxHp;
 
   Player({
     this.level = 1,
     this.rank = PlayerRank.E,
     this.currentExp = 0,
     this.maxExp = 100, // Default EXP needed for Level 2
+    this.currentHp = 100,
+    this.maxHp = 100,
   });
 
   // copyWith allows us to update specific fields easily without mutating the original object
@@ -19,12 +23,16 @@ class Player {
     PlayerRank? rank,
     int? currentExp,
     int? maxExp,
+    int? currentHp,
+    int? maxHp,
   }) {
     return Player(
       level: level ?? this.level,
       rank: rank ?? this.rank,
       currentExp: currentExp ?? this.currentExp,
       maxExp: maxExp ?? this.maxExp,
+      currentHp: currentHp ?? this.currentHp,
+      maxHp: maxHp ?? this.maxHp,
     );
   }
 }
