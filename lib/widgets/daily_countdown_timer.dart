@@ -64,9 +64,9 @@ class _DailyCountdownTimerState extends State<DailyCountdownTimer> {
         return Container(
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
           decoration: BoxDecoration(
-            color: Colors.red.withOpacity(0.05),
+            color: Colors.red.withValues(alpha: 0.05),
             borderRadius: BorderRadius.circular(8),
-            border: Border.all(color: Colors.red.withOpacity(0.2)),
+            border: Border.all(color: Colors.red.withValues(alpha: 0.2)),
           ),
           child: Row(
             mainAxisSize: MainAxisSize.min,

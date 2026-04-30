@@ -38,7 +38,7 @@ class ProfileScreen extends ConsumerWidget {
       decoration: BoxDecoration(
         color: ShadowColors.surface,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: ShadowColors.amethyst.withOpacity(0.2)),
+        border: Border.all(color: ShadowColors.amethyst.withValues(alpha: 0.2)),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withValues(alpha: 0.4),
@@ -78,7 +78,7 @@ class ProfileScreen extends ConsumerWidget {
                     color: isSelected ? ShadowColors.amethyst : const Color(0xFF1E1E1E),
                     boxShadow: isSelected ? [
                       BoxShadow(
-                        color: ShadowColors.amethyst.withOpacity(0.5),
+                        color: ShadowColors.amethyst.withValues(alpha: 0.5),
                         blurRadius: 10,
                         spreadRadius: 1,
                       )
