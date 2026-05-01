@@ -1,5 +1,4 @@
 
-import 'dart:ui';
 import 'package:flutter/material.dart';
 
 import '../logic/system_logic.dart';
@@ -106,7 +105,12 @@ class _PlayerStatusHeaderState extends State<PlayerStatusHeader>
         return Container(
           margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
           decoration: BoxDecoration(
+            color: ShadowColors.surface.withValues(alpha: 0.92),
             borderRadius: BorderRadius.circular(20),
+            border: Border.all(
+              color: ShadowColors.glassBorder.withValues(alpha: 0.25),
+              width: 1.5,
+            ),
             boxShadow: [
               // Weightless shadows
               ...ShadowColors.weightlessShadow,
@@ -118,23 +122,7 @@ class _PlayerStatusHeaderState extends State<PlayerStatusHeader>
               ),
             ],
           ),
-          child: ClipRRect(
-            borderRadius: BorderRadius.circular(20),
-            child: BackdropFilter(
-              filter: ImageFilter.blur(sigmaX: 16, sigmaY: 16),
-              child: Container(
-                decoration: BoxDecoration(
-                  color: ShadowColors.surface.withValues(alpha: 0.75),
-                  borderRadius: BorderRadius.circular(20),
-                  border: Border.all(
-                    color: ShadowColors.glassBorder.withValues(alpha: 0.25),
-                    width: 1.5,
-                  ),
-                ),
-                child: child,
-              ),
-            ),
-          ),
+          child: child,
         );
       },
       child: Padding(

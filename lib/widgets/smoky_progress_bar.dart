@@ -40,12 +40,6 @@ final _edgePaint   = Paint();
 final _sparkPaint  = Paint();
 final _auraPaint   = Paint();
 
-// ── PERF: Cache a unit radial shader (white -> transparent) 
-// used for all smoke puffs via transformation & modulation.
-final Shader _unitSmokeShader = const RadialGradient(
-  colors: [Colors.white, Colors.transparent],
-).createShader(Rect.fromCircle(center: Offset.zero, radius: 1.0));
-
 // ─────────────────────────────────────────────
 //  CustomPainter — draws one frame
 // ─────────────────────────────────────────────
@@ -111,49 +105,34 @@ class _SmokePainter extends CustomPainter {
     canvas.drawRRect(fillRRect, _fillPaint);
 
     // ── 4. Smoke / particle layer ────────────────────────────────
-    _smokePaint.shader = _unitSmokeShader;
-    
     for (final p in particles) {
-      // Skip particles whose base position is beyond the fill
       if (p.baseX > fillProgress) continue;
 
-      // Y drifts upward over time, wraps around
       final double drift = (smokeTime * p.speed) % 1.0;
       final double normY = (p.baseY - drift + 1.0) % 1.0;
 
-      // Fade near top & bottom edges so particles don't pop
       double edgeFade = 1.0;
       if (normY < 0.25) edgeFade = normY / 0.25;
       if (normY > 0.75) edgeFade = (1.0 - normY) / 0.25;
 
-      // Sine-wave horizontal drift
       final double xWave =
           math.sin(smokeTime * p.waveFreq + p.phase) * p.waveAmp;
-
       final double px = p.baseX * fillW + xWave;
       final double py = normY * h;
-
-      // Pulse the radius slightly
       final double pulseFactor =
           1.0 + 0.25 * math.sin(smokeTime * 2.3 + p.phase);
-      final double r = p.radius * pulseFactor;
-
-      // Soft radial gradient puff
-      final double drawR = r * 2.5;
+      final double drawR = p.radius * pulseFactor * 2.5;
       if (drawR < 0.5) continue;
 
-      // ── PERF: Reuse unit shader + ColorFilter (modulate)
-      // This avoids 20-30 createShader() calls per frame.
       final double alpha = (p.opacity * edgeFade * 0.9).clamp(0.0, 1.0);
-      _smokePaint.colorFilter = ColorFilter.mode(
-        accentColor.withValues(alpha: alpha), 
-        BlendMode.modulate
-      );
+
+      // Simple approach — just use a colored paint directly
+      _smokePaint.color = accentColor.withValues(alpha: alpha);
+      _smokePaint.maskFilter = const MaskFilter.blur(BlurStyle.normal, 3);
 
       canvas.save();
       canvas.translate(px, py);
-      canvas.scale(drawR);
-      canvas.drawCircle(Offset.zero, 1.0, _smokePaint);
+      canvas.drawCircle(Offset.zero, drawR, _smokePaint);
       canvas.restore();
     }
 

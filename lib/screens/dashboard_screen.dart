@@ -61,7 +61,11 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
 
   @override
   Widget build(BuildContext context) {
-    final player = ref.watch(playerProvider);
+    final playerLevel = ref.watch(playerProvider.select((p) => p.level));
+    final playerXp = ref.watch(playerProvider.select((p) => p.currentExp));
+    final playerMaxXp = ref.watch(playerProvider.select((p) => p.maxExp));
+    final playerHp = ref.watch(playerProvider.select((p) => p.currentHp));
+    final playerMaxHp = ref.watch(playerProvider.select((p) => p.maxHp));
     final quests = ref.watch(questProvider);
 
     return Scaffold(
@@ -95,11 +99,11 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
                             Tween<Offset>(begin: const Offset(0, 0.2), end: Offset.zero),
                           ),
                           child: PlayerStatusHeader(
-                            level:      player.level,
-                            currentXp:  player.currentExp,
-                            maxXp:      player.maxExp,
-                            currentHp:  player.currentHp,
-                            maxHp:      player.maxHp,
+                            level:      playerLevel,
+                            currentXp:  playerXp,
+                            maxXp:      playerMaxXp,
+                            currentHp:  playerHp,
+                            maxHp:      playerMaxHp,
                           ),
                         ),
                       ),
@@ -130,7 +134,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
                     itemBuilder: (context, index) {
                       return Padding(
                         padding: const EdgeInsets.only(bottom: 12),
-                        child: _buildStaggeredQuestTracker(quests[index], player, index),
+                        child: _buildStaggeredQuestTracker(quests[index], index),
                       );
                     },
                   ),
@@ -287,7 +291,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
     );
   }
 
-  Widget _buildStaggeredQuestTracker(DailyQuest quest, Player player, int index) {
+  Widget _buildStaggeredQuestTracker(DailyQuest quest, int index) {
     // ── PERF: Animation index now staggers across a larger range (3..7).
     final animIndex = (3 + index).clamp(0, _staggeredAnims.length - 1);
     
@@ -302,7 +306,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
             label: quest.title,
             icon: _getIconForQuest(quest.id),
             completed: quest.currentReps,
-            target: quest.getActualReps(player.rank),
+            target: quest.getActualReps(ref.read(playerProvider).rank),
             unit: quest.id == 'run' ? 'km' : 'reps',
             isDecimal: quest.id == 'run',
             onAdd: () {

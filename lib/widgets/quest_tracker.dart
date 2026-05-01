@@ -1,4 +1,3 @@
-import 'dart:ui';
 import 'package:flutter/material.dart';
 import '../theme/app_theme.dart';
 import 'smoky_progress_bar.dart';
@@ -47,113 +46,97 @@ class QuestTracker extends StatelessWidget {
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
       decoration: BoxDecoration(
+        color: const Color(0xFF111118).withValues(alpha: 0.94),
         borderRadius: BorderRadius.circular(20),
-        boxShadow: ShadowColors.weightlessShadow,
-      ),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(20),
-        child: BackdropFilter(
-          filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-            decoration: BoxDecoration(
-              color: ShadowColors.surface.withValues(alpha: 0.7),
-              borderRadius: BorderRadius.circular(20),
-              border: Border.all(
-                color: _isDone
-                    ? ShadowColors.success.withValues(alpha: 0.4)
-                    : ShadowColors.glassBorder.withValues(alpha: 0.2),
-                width: 1.2,
-              ),
+        border: Border.all(
+          color: _isDone
+              ? ShadowColors.success.withValues(alpha: 0.4)
+              : ShadowColors.glassBorder.withValues(alpha: 0.18),
+          width: 1.2,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.35),
+            blurRadius: 12,
+            offset: const Offset(0, 6),
+          ),
+          if (_isDone)
+            BoxShadow(
+              color: ShadowColors.success.withValues(alpha: 0.08),
+              blurRadius: 20,
             ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // ── Top row: icon + label + count + buttons ──
-                Row(
+        ],
+      ),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                width: 40,
+                height: 40,
+                decoration: BoxDecoration(
+                  color: ShadowColors.surfaceAlt,
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(
+                      color: _accentColor.withValues(alpha: 0.4), width: 1),
+                ),
+                child: Icon(icon, color: _accentColor, size: 20),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // Icon
-                    Container(
-                      width: 40,
-                      height: 40,
-                      decoration: BoxDecoration(
-                        color: ShadowColors.surfaceAlt,
-                        borderRadius: BorderRadius.circular(10),
-                        border: Border.all(
-                            color: _accentColor.withValues(alpha: 0.4), width: 1),
-                      ),
-                      child: Icon(icon, color: _accentColor, size: 20),
+                    Text(
+                      label.toUpperCase(),
+                      style: ShadowTextTheme.mono(11,
+                          color: ShadowColors.textSecondary,
+                          weight: FontWeight.bold),
                     ),
-                    const SizedBox(width: 12),
-
-                    // Label + unit
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            label.toUpperCase(),
-                            style: ShadowTextTheme.mono(
-                              11,
-                              color: ShadowColors.textSecondary,
-                              weight: FontWeight.bold,
-                            ),
-                          ),
-                          const SizedBox(height: 2),
-                          // Progress fraction
-                          Text(
-                            isDecimal
-                                ? '${(completed / 10).toStringAsFixed(1)} / ${(target / 10).toStringAsFixed(1)} $unit'
-                                : '$completed / $target $unit',
-                            style: ShadowTextTheme.mono(
-                              15,
-                              color: _isDone
-                                  ? ShadowColors.success
-                                  : ShadowColors.textPrimary,
-                              weight: FontWeight.bold,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-
-                    // Subtract button
-                    _ControlButton(
-                      icon: Icons.remove,
-                      onTap: onSubtract,
-                      onLongPress: onLongSubtract,
-                      enabled: completed > 0,
-                      color: ShadowColors.textSecondary,
-                    ),
-                    const SizedBox(width: 8),
-
-                    // Add Rep button
-                    _ControlButton(
-                      icon: _isDone ? Icons.check_rounded : Icons.add_rounded,
-                      onTap: _isDone ? () {} : onAdd,
-                      onLongPress: _isDone ? null : onLongAdd,
-                      enabled: !_isDone,
-                      isDone: _isDone,
-                      color: _isDone ? ShadowColors.success : ShadowColors.amethyst,
-                      isPrimary: true,
+                    const SizedBox(height: 2),
+                    Text(
+                      isDecimal
+                          ? '${(completed / 10).toStringAsFixed(1)} / ${(target / 10).toStringAsFixed(1)} $unit'
+                          : '$completed / $target $unit',
+                      style: ShadowTextTheme.mono(15,
+                          color: _isDone
+                              ? ShadowColors.success
+                              : ShadowColors.textPrimary,
+                          weight: FontWeight.bold),
                     ),
                   ],
                 ),
-
-                const SizedBox(height: 12),
-
-                // ── Smoky progress bar ──
-                SmokyProgressBar(
-                  currentValue: completed,
-                  maxValue: target,
-                  color: _accentColor,
-                  height: 8,
-                  particleCount: 18,
-                ),
-              ],
-            ),
+              ),
+              _ControlButton(
+                icon: Icons.remove,
+                onTap: onSubtract,
+                onLongPress: onLongSubtract,
+                enabled: completed > 0,
+                color: ShadowColors.textSecondary,
+              ),
+              const SizedBox(width: 8),
+              _ControlButton(
+                icon: _isDone ? Icons.check_rounded : Icons.add_rounded,
+                onTap: _isDone ? () {} : onAdd,
+                onLongPress: _isDone ? null : onLongAdd,
+                enabled: !_isDone,
+                isDone: _isDone,
+                color: _isDone ? ShadowColors.success : ShadowColors.amethyst,
+                isPrimary: true,
+              ),
+            ],
           ),
-        ),
+          const SizedBox(height: 12),
+          SmokyProgressBar(
+            currentValue: completed,
+            maxValue: target,
+            color: _accentColor,
+            height: 8,
+            particleCount: 18,
+          ),
+        ],
       ),
     );
   }

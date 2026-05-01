@@ -39,11 +39,10 @@ class _ShadowCardState extends State<ShadowCard>
     _glowController = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 2400),
-    )..repeat(reverse: true);
-
-    _glowAnim = Tween<double>(begin: 0.3, end: 1.0).animate(
-      CurvedAnimation(parent: _glowController, curve: Curves.easeInOut),
     );
+
+    // Don't auto-repeat — only animate on hover/tap
+    _glowAnim = Tween<double>(begin: 0.6, end: 0.6).animate(_glowController);
   }
 
   @override
@@ -58,8 +57,15 @@ class _ShadowCardState extends State<ShadowCard>
     final glowColor = accent.withValues(alpha: 0.25);
 
     return MouseRegion(
-      onEnter: (_) => setState(() => _isHovered = true),
-      onExit: (_) => setState(() => _isHovered = false),
+      onEnter: (_) {
+        setState(() => _isHovered = true);
+        _glowController.repeat(reverse: true); // only animate when hovered
+      },
+      onExit: (_) {
+        setState(() => _isHovered = false);
+        _glowController.stop();
+        _glowController.reset();
+      },
       child: GestureDetector(
         onTap: widget.onTap,
         onTapDown: (_) => setState(() => _pressed = true),
@@ -98,8 +104,8 @@ class _ShadowCardState extends State<ShadowCard>
                   // to save GPU cycles from constant repaints.
                   BoxShadow(
                     color: glowColor.withValues(
-                        alpha: glowColor.a * (_isHovered ? _glowAnim.value * 1.5 : 0.6)),
-                    blurRadius: _isHovered ? 30 : 20,
+                        alpha: _isHovered ? 0.5 : 0.2),
+                    blurRadius: _isHovered ? 30 : 16,
                     spreadRadius: _isHovered ? 2 : 0,
                   ),
                 ],
