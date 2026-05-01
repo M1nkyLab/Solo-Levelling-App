@@ -22,6 +22,7 @@ class ShadowColors {
   static const Color amethyst       = Color(0xFF8A2BE2); // Primary – glowing purple
   static const Color amethystLight  = Color(0xFFAB5CF7); // Hover / highlight
   static const Color amethystGlow   = Color(0x448A2BE2); // Shadow / glow tint
+  static const Color portalBlue     = Color(0xFF00B4FF); // Blue glow for system portals
 
   // Text
   static const Color textPrimary    = Color(0xFFE8E8F0); // Off-white headlines
@@ -55,29 +56,40 @@ class ShadowColors {
 class ShadowTextTheme {
   ShadowTextTheme._();
 
+  static final TextStyle _orbitronBase = GoogleFonts.orbitron(
+    color: ShadowColors.textPrimary,
+    letterSpacing: 1.5,
+  );
+
+  static final TextStyle _robotoMonoBase = GoogleFonts.robotoMono(
+    color: ShadowColors.textPrimary,
+  );
+
+  static final TextStyle _rajdhaniBase = GoogleFonts.rajdhani(
+    color: ShadowColors.textSecondary,
+    letterSpacing: 0.5,
+  );
+
   // Orbitron – sharp, aggressive sans-serif for headings
   static TextStyle headline(double size, {FontWeight weight = FontWeight.bold}) =>
-      GoogleFonts.orbitron(
+      _orbitronBase.copyWith(
         fontSize: size,
         fontWeight: weight,
-        color: ShadowColors.textPrimary,
-        letterSpacing: 1.5,
       );
 
   // Roboto Mono – clean monospace for stats & numbers
   static TextStyle mono(double size, {Color? color, FontWeight weight = FontWeight.normal}) =>
-      GoogleFonts.robotoMono(
+      _robotoMonoBase.copyWith(
         fontSize: size,
         fontWeight: weight,
-        color: color ?? ShadowColors.textPrimary,
+        color: color,
       );
 
   // Rajdhani – body text, readable but slightly techy
   static TextStyle body(double size, {Color? color}) =>
-      GoogleFonts.rajdhani(
+      _rajdhaniBase.copyWith(
         fontSize: size,
-        color: color ?? ShadowColors.textSecondary,
-        letterSpacing: 0.5,
+        color: color,
       );
 }
 

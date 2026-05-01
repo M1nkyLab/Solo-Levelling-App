@@ -1,12 +1,20 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter/scheduler.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'theme/app_theme.dart';
 import 'screens/dashboard_screen.dart';
 
 void main() async {
-  WidgetsFlutterBinding.ensureInitialized();
+  final binding = WidgetsFlutterBinding.ensureInitialized();
+
+  // ── PERF: Warm up shaders and cache before first frame
+  // This reduces the 'first-scroll jank' by pre-preparing the raster cache.
+  await binding.defaultBinaryMessenger.send('flutter/service', null);
+  SchedulerBinding.instance.addPostFrameCallback((_) {
+    PaintingBinding.instance.imageCache.maximumSizeBytes = 50 << 20; // 50MB
+  });
 
   // Initialize Supabase
   // Replace these with your actual Supabase project credentials

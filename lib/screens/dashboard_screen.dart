@@ -1,4 +1,3 @@
-import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -10,7 +9,6 @@ import '../theme/app_theme.dart';
 import '../widgets/player_status_header.dart';
 import '../widgets/quest_tracker.dart';
 import '../widgets/daily_countdown_timer.dart';
-import 'profile_screen.dart';
 
 // ─────────────────────────────────────────────
 //  Dashboard Screen
@@ -35,9 +33,10 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
       duration: const Duration(milliseconds: 1200),
     );
 
-    // Create 5 staggered steps for entry
-    for (int i = 0; i < 5; i++) {
-      final double start = i * 0.1;
+    // ── PERF: Increased stagger steps to 8 to avoid clamping 
+    // too many items to the same animation index.
+    for (int i = 0; i < 8; i++) {
+      final double start = i * 0.08;
       final double end = (start + 0.6).clamp(0.0, 1.0);
       _staggeredAnims.add(
         CurvedAnimation(
@@ -75,8 +74,13 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
           // ── Main Content ──────────────────────────────────────────
           SafeArea(
             child: CustomScrollView(
+              physics: const BouncingScrollPhysics(
+                parent: AlwaysScrollableScrollPhysics(),
+              ),
               slivers: [
                 _buildAppBar(),
+                
+                // ── Header & Status (Lazily composed) ──────────────────
                 SliverToBoxAdapter(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -110,13 +114,29 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
                       
                       const SizedBox(height: 32),
 
-                      // ── 3. Quest Section (Staggered Step 2+) ────────
-                      _buildQuestSection(player, quests),
+                      // ── 3. Quest Section Header (Staggered Step 2) ──
+                      _buildQuestSectionHeader(quests),
                       
-                      const SizedBox(height: 40),
+                      const SizedBox(height: 16),
                     ],
                   ),
                 ),
+
+                // ── 4. Quest Trackers (Lazily loaded) ─────────────────
+                SliverPadding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  sliver: SliverList.builder(
+                    itemCount: quests.length,
+                    itemBuilder: (context, index) {
+                      return Padding(
+                        padding: const EdgeInsets.only(bottom: 12),
+                        child: _buildStaggeredQuestTracker(quests[index], player, index),
+                      );
+                    },
+                  ),
+                ),
+
+                const SliverToBoxAdapter(child: SizedBox(height: 40)),
               ],
             ),
           ),
@@ -126,82 +146,102 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
   }
 
   // ─────────────────────────────────────────────
-  //  Parallax Background layer
+  //  Background: ambient glowing orbs
   // ─────────────────────────────────────────────
   Widget _buildBackground() {
     return Positioned.fill(
-      child: Container(
-        decoration: const BoxDecoration(
-          gradient: RadialGradient(
-            center: Alignment(0.7, -0.6),
-            radius: 1.2,
-            colors: [
-              ShadowColors.glassAmethyst,
-              ShadowColors.obsidian,
-            ],
-          ),
+      child: IgnorePointer(
+        child: Stack(
+          children: [
+            // Top-left amethyst orb
+            Positioned(
+              top: -80,
+              left: -60,
+              child: _glowOrb(
+                color: ShadowColors.amethyst,
+                size: 300,
+                opacity: 0.12,
+              ),
+            ),
+            // Bottom-right blue orb
+            Positioned(
+              bottom: -100,
+              right: -80,
+              child: _glowOrb(
+                color: ShadowColors.portalBlue,
+                size: 350,
+                opacity: 0.09,
+              ),
+            ),
+          ],
         ),
-        // ── PERF: BackdropFilter(blur:50) removed — the background is
-        // fully opaque so blurring it had no visible effect but forced
-        // an expensive GPU composite pass on every frame.
       ),
     );
   }
 
   // ─────────────────────────────────────────────
-  //  App bar
+  //  Sliver app bar
   // ─────────────────────────────────────────────
   Widget _buildAppBar() {
     return SliverAppBar(
       backgroundColor: Colors.transparent,
-      pinned: true,
       elevation: 0,
-      centerTitle: true,
-      flexibleSpace: ClipRect(
-        child: BackdropFilter(
-          filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
-          child: Container(color: ShadowColors.obsidian.withValues(alpha: 0.5)),
-        ),
-      ),
-      title: Text(
-        'SHADOW LEVELLING',
-        style: ShadowTextTheme.headline(14).copyWith(
-          shadows: [
-            const Shadow(color: ShadowColors.amethyst, blurRadius: 8),
-          ],
-        ),
+      pinned: false,
+      floating: true,
+      snap: true,
+      expandedHeight: 0,
+      title: Row(
+        children: [
+          // Logo / brand mark
+          Container(
+            width: 32,
+            height: 32,
+            decoration: BoxDecoration(
+              color: ShadowColors.amethyst.withValues(alpha: 0.2),
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(
+                color: ShadowColors.amethyst.withValues(alpha: 0.5),
+              ),
+            ),
+            child: const Icon(
+              Icons.bolt_rounded,
+              color: ShadowColors.amethyst,
+              size: 18,
+            ),
+          ),
+          const SizedBox(width: 10),
+          Text(
+            'SHADOW LEVELING',
+            style: ShadowTextTheme.headline(15),
+          ),
+        ],
       ),
       actions: [
         IconButton(
-          icon: const Icon(Icons.person_outline_rounded,
-              color: ShadowColors.amethystLight),
-          onPressed: () {
-            Navigator.push(
-              context,
-              MaterialPageRoute(builder: (context) => const ProfileScreen()),
-            );
-          },
+          onPressed: _vibrate,
+          icon: const Icon(Icons.notifications_none_rounded,
+              color: ShadowColors.textSecondary),
         ),
+        const SizedBox(width: 4),
       ],
     );
   }
 
   // ─────────────────────────────────────────────
-  //  Daily Quest section
+  //  Quest section header
   // ─────────────────────────────────────────────
-  Widget _buildQuestSection(Player player, List<DailyQuest> quests) {
+  Widget _buildQuestSectionHeader(List<DailyQuest> quests) {
     final today = DateTime.now();
     final dateStr =
         '${_weekday(today.weekday)}, ${today.day} ${_month(today.month)}';
 
-    final allDone = quests.every((DailyQuest q) => q.isCompleted);
+    final allDone = quests.isNotEmpty && quests.every((DailyQuest q) => q.isCompleted);
 
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Section header (Staggered Step 2)
           FadeTransition(
             opacity: _staggeredAnims[2],
             child: Row(
@@ -240,52 +280,48 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
           // Completion badge
           if (allDone) ...[
             const SizedBox(height: 12),
-            _CompletionBanner(),
+            const _CompletionBanner(),
           ],
-
-          const SizedBox(height: 16),
-
-          // Trackers (Staggered Step 3+)
-          for (int i = 0; i < quests.length; i++)
-            _buildStaggeredQuestTracker(quests[i], player, i),
         ],
       ),
     );
   }
 
   Widget _buildStaggeredQuestTracker(DailyQuest quest, Player player, int index) {
-    // Use animation 3 for the first quest, 4 for the rest (clamped)
-    final animIndex = (3 + index).clamp(0, 4);
+    // ── PERF: Animation index now staggers across a larger range (3..7).
+    final animIndex = (3 + index).clamp(0, _staggeredAnims.length - 1);
     
-    return FadeTransition(
-      opacity: _staggeredAnims[animIndex],
-      child: SlideTransition(
-        position: _staggeredAnims[animIndex].drive(
-          Tween<Offset>(begin: const Offset(0.1, 0), end: Offset.zero),
-        ),
-        child: QuestTracker(
-          label: quest.title,
-          icon: _getIconForQuest(quest.id),
-          completed: quest.currentReps,
-          target: quest.getActualReps(player.rank),
-          unit: quest.id == 'run' ? 'km' : 'reps',
-          isDecimal: quest.id == 'run',
-          onAdd: () {
-            _vibrate();
-            ref.read(questProvider.notifier).updateReps(quest.id, 1);
-          },
-          onSubtract: () {
-            _vibrate();
-            ref.read(questProvider.notifier).updateReps(quest.id, -1);
-          },
-          onLongAdd: () {
-            _vibrate();
-            ref.read(questProvider.notifier).updateReps(quest.id, 10);
-          },
-          onLongSubtract: () {
-            _vibrate();
-            ref.read(questProvider.notifier).updateReps(quest.id, -10);
-          },
+    return RepaintBoundary(
+      child: FadeTransition(
+        opacity: _staggeredAnims[animIndex],
+        child: SlideTransition(
+          position: _staggeredAnims[animIndex].drive(
+            Tween<Offset>(begin: const Offset(0.1, 0), end: Offset.zero),
+          ),
+          child: QuestTracker(
+            label: quest.title,
+            icon: _getIconForQuest(quest.id),
+            completed: quest.currentReps,
+            target: quest.getActualReps(player.rank),
+            unit: quest.id == 'run' ? 'km' : 'reps',
+            isDecimal: quest.id == 'run',
+            onAdd: () {
+              _vibrate();
+              ref.read(questProvider.notifier).updateReps(quest.id, 1);
+            },
+            onSubtract: () {
+              _vibrate();
+              ref.read(questProvider.notifier).updateReps(quest.id, -1);
+            },
+            onLongAdd: () {
+              _vibrate();
+              ref.read(questProvider.notifier).updateReps(quest.id, 10);
+            },
+            onLongSubtract: () {
+              _vibrate();
+              ref.read(questProvider.notifier).updateReps(quest.id, -10);
+            },
+          ),
         ),
       ),
     );
@@ -308,12 +344,34 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
         'Jan','Feb','Mar','Apr','May','Jun',
         'Jul','Aug','Sep','Oct','Nov','Dec'
       ][m - 1];
+
+  Widget _glowOrb({
+    required Color color,
+    required double size,
+    required double opacity,
+  }) {
+    return Container(
+      width: size,
+      height: size,
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        gradient: RadialGradient(
+          colors: [
+            color.withValues(alpha: opacity),
+            color.withValues(alpha: 0),
+          ],
+        ),
+      ),
+    );
+  }
 }
 
 // ─────────────────────────────────────────────
 //  All-done completion banner
 // ─────────────────────────────────────────────
 class _CompletionBanner extends StatelessWidget {
+  const _CompletionBanner();
+
   @override
   Widget build(BuildContext context) {
     return Container(

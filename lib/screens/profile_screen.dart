@@ -53,10 +53,8 @@ class ProfileScreen extends ConsumerWidget {
             ],
           ),
         ),
-        child: BackdropFilter(
-          filter: ImageFilter.blur(sigmaX: 50, sigmaY: 50),
-          child: Container(color: Colors.transparent),
-        ),
+        // ── PERF: Removed BackdropFilter(sigma:50). Full-screen blurs 
+        // are extremely expensive on mobile GPUs.
       ),
     );
   }
@@ -94,78 +92,71 @@ class ProfileScreen extends ConsumerWidget {
 
     return Container(
       decoration: BoxDecoration(
+        color: ShadowColors.surface.withValues(alpha: 0.85),
         borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: ShadowColors.glassBorder.withValues(alpha: 0.2)),
         boxShadow: ShadowColors.weightlessShadow,
       ),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(20),
-        child: BackdropFilter(
-          filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
-          child: Container(
-            padding: const EdgeInsets.all(20),
-            decoration: BoxDecoration(
-              color: ShadowColors.surface.withValues(alpha: 0.7),
-              borderRadius: BorderRadius.circular(20),
-              border: Border.all(color: ShadowColors.glassBorder.withValues(alpha: 0.2)),
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+      // ── PERF: Removed BackdropFilter from card. Semi-transparent
+      // background provides sufficient "glass" feel without the GPU hit.
+      child: Padding(
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
               children: [
-                Row(
-                  children: [
-                    const Icon(Icons.calendar_month_rounded, color: ShadowColors.amethystLight, size: 20),
-                    const SizedBox(width: 10),
-                    Text(
-                      'WORKOUT SCHEDULE',
-                      style: ShadowTextTheme.mono(13, color: ShadowColors.textPrimary, weight: FontWeight.bold),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 20),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: List.generate(7, (index) {
-                    final dayNum = index + 1;
-                    final isSelected = schedule.contains(dayNum);
-                    
-                    return GestureDetector(
-                      onTap: () => ref.read(scheduleProvider.notifier).toggleDay(dayNum),
-                      child: AnimatedContainer(
-                        duration: const Duration(milliseconds: 200),
-                        width: 40,
-                        height: 40,
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          color: isSelected ? ShadowColors.amethyst : const Color(0xFF1E1E1E).withValues(alpha: 0.5),
-                          boxShadow: isSelected ? [
-                            BoxShadow(
-                              color: ShadowColors.amethyst.withValues(alpha: 0.5),
-                              blurRadius: 10,
-                              spreadRadius: 1,
-                            )
-                          ] : [],
-                          border: Border.all(
-                            color: isSelected ? ShadowColors.amethystLight : Colors.transparent,
-                            width: 1.5,
-                          ),
-                        ),
-                        child: Center(
-                          child: Text(
-                            days[index],
-                            style: ShadowTextTheme.mono(
-                              14,
-                              color: isSelected ? Colors.white : ShadowColors.textDisabled,
-                              weight: isSelected ? FontWeight.bold : FontWeight.normal,
-                            ),
-                          ),
-                        ),
-                      ),
-                    );
-                  }),
+                const Icon(Icons.calendar_month_rounded, color: ShadowColors.amethystLight, size: 20),
+                const SizedBox(width: 10),
+                Text(
+                  'WORKOUT SCHEDULE',
+                  style: ShadowTextTheme.mono(13, color: ShadowColors.textPrimary, weight: FontWeight.bold),
                 ),
               ],
             ),
-          ),
+            const SizedBox(height: 20),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: List.generate(7, (index) {
+                final dayNum = index + 1;
+                final isSelected = schedule.contains(dayNum);
+                
+                return GestureDetector(
+                  onTap: () => ref.read(scheduleProvider.notifier).toggleDay(dayNum),
+                  child: AnimatedContainer(
+                    duration: const Duration(milliseconds: 200),
+                    width: 40,
+                    height: 40,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: isSelected ? ShadowColors.amethyst : const Color(0xFF1E1E1E).withValues(alpha: 0.5),
+                      boxShadow: isSelected ? [
+                        BoxShadow(
+                          color: ShadowColors.amethyst.withValues(alpha: 0.5),
+                          blurRadius: 10,
+                          spreadRadius: 1,
+                        )
+                      ] : [],
+                      border: Border.all(
+                        color: isSelected ? ShadowColors.amethystLight : Colors.transparent,
+                        width: 1.5,
+                      ),
+                    ),
+                    child: Center(
+                      child: Text(
+                        days[index],
+                        style: ShadowTextTheme.mono(
+                          14,
+                          color: isSelected ? Colors.white : ShadowColors.textDisabled,
+                          weight: isSelected ? FontWeight.bold : FontWeight.normal,
+                        ),
+                      ),
+                    ),
+                  ),
+                );
+              }),
+            ),
+          ],
         ),
       ),
     );

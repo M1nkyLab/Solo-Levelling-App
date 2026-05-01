@@ -1,4 +1,3 @@
-import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:vector_math/vector_math_64.dart' as v64;
 import '../theme/app_theme.dart';
@@ -84,13 +83,22 @@ class _ShadowCardState extends State<ShadowCard>
               transformAlignment: Alignment.center,
               decoration: BoxDecoration(
                 borderRadius: BorderRadius.circular(20),
+                // ── PERF: Static background color + border 
+                // instead of expensive BackdropFilter.
+                color: ShadowColors.surface.withValues(alpha: 0.85),
+                border: Border.all(
+                  color: ShadowColors.glassBorder.withValues(
+                      alpha: _isHovered ? 0.4 : 0.2),
+                  width: 1.5,
+                ),
                 boxShadow: [
                   // Layered soft shadows (Weightlessness)
                   ...ShadowColors.weightlessShadow,
-                  // Dynamic accent glow
+                  // Dynamic accent glow — reduced to static on idle
+                  // to save GPU cycles from constant repaints.
                   BoxShadow(
                     color: glowColor.withValues(
-                        alpha: glowColor.a * _glowAnim.value * (_isHovered ? 1.5 : 1.0)),
+                        alpha: glowColor.a * (_isHovered ? _glowAnim.value * 1.5 : 0.6)),
                     blurRadius: _isHovered ? 30 : 20,
                     spreadRadius: _isHovered ? 2 : 0,
                   ),
@@ -98,26 +106,12 @@ class _ShadowCardState extends State<ShadowCard>
               ),
               child: ClipRRect(
                 borderRadius: BorderRadius.circular(20),
-                child: BackdropFilter(
-                  filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
-                  child: Container(
-                    decoration: BoxDecoration(
-                      color: ShadowColors.surface.withValues(alpha: 0.7),
-                      borderRadius: BorderRadius.circular(20),
-                      border: Border.all(
-                        color: ShadowColors.glassBorder.withValues(
-                            alpha: _isHovered ? 0.4 : 0.2),
-                        width: 1.5,
-                      ),
-                    ),
-                    child: _CardContent(
-                      title: widget.title,
-                      value: widget.value,
-                      icon: widget.icon,
-                      accent: accent,
-                      badge: widget.badge,
-                    ),
-                  ),
+                child: _CardContent(
+                  title: widget.title,
+                  value: widget.value,
+                  icon: widget.icon,
+                  accent: accent,
+                  badge: widget.badge,
                 ),
               ),
             );

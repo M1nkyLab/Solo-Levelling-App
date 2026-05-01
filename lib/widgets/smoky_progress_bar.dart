@@ -40,6 +40,12 @@ final _edgePaint   = Paint();
 final _sparkPaint  = Paint();
 final _auraPaint   = Paint();
 
+// ── PERF: Cache a unit radial shader (white -> transparent) 
+// used for all smoke puffs via transformation & modulation.
+final Shader _unitSmokeShader = const RadialGradient(
+  colors: [Colors.white, Colors.transparent],
+).createShader(Rect.fromCircle(center: Offset.zero, radius: 1.0));
+
 // ─────────────────────────────────────────────
 //  CustomPainter — draws one frame
 // ─────────────────────────────────────────────
@@ -91,6 +97,7 @@ class _SmokePainter extends CustomPainter {
     canvas.clipRRect(fillRRect);
 
     // ── 3. Base gradient fill ─────────────────────────────────────
+    // ── PERF: Shader created once per paint (not per particle)
     _fillPaint.shader = LinearGradient(
       begin: Alignment.centerLeft,
       end: Alignment.centerRight,
@@ -104,6 +111,8 @@ class _SmokePainter extends CustomPainter {
     canvas.drawRRect(fillRRect, _fillPaint);
 
     // ── 4. Smoke / particle layer ────────────────────────────────
+    _smokePaint.shader = _unitSmokeShader;
+    
     for (final p in particles) {
       // Skip particles whose base position is beyond the fill
       if (p.baseX > fillProgress) continue;
@@ -124,25 +133,28 @@ class _SmokePainter extends CustomPainter {
       final double px = p.baseX * fillW + xWave;
       final double py = normY * h;
 
-      // Pulse the radius slightly to sell the "breathing smoke" feel
+      // Pulse the radius slightly
       final double pulseFactor =
           1.0 + 0.25 * math.sin(smokeTime * 2.3 + p.phase);
       final double r = p.radius * pulseFactor;
 
-      final Offset center = Offset(px, py);
-
-      // Soft radial gradient puff — skip if radius would be zero
+      // Soft radial gradient puff
       final double drawR = r * 2.5;
       if (drawR < 0.5) continue;
 
-      // Reuse _smokePaint — avoids a new Paint() allocation per particle
-      _smokePaint.shader = RadialGradient(
-        colors: [
-          accentColor.withValues(alpha: p.opacity * edgeFade * 0.9),
-          accentColor.withValues(alpha: 0),
-        ],
-      ).createShader(Rect.fromCircle(center: center, radius: drawR));
-      canvas.drawCircle(center, drawR, _smokePaint);
+      // ── PERF: Reuse unit shader + ColorFilter (modulate)
+      // This avoids 20-30 createShader() calls per frame.
+      final double alpha = (p.opacity * edgeFade * 0.9).clamp(0.0, 1.0);
+      _smokePaint.colorFilter = ColorFilter.mode(
+        accentColor.withValues(alpha: alpha), 
+        BlendMode.modulate
+      );
+
+      canvas.save();
+      canvas.translate(px, py);
+      canvas.scale(drawR);
+      canvas.drawCircle(Offset.zero, 1.0, _smokePaint);
+      canvas.restore();
     }
 
     // ── 5. Shimmer sweep ─────────────────────────────────────────
