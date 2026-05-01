@@ -1,10 +1,10 @@
+import 'dart:ui';
 import 'package:flutter/material.dart';
 import '../theme/app_theme.dart';
 import 'smoky_progress_bar.dart';
 
 /// A single exercise tracker row used inside the Daily Quest section.
-///
-/// Shows: icon • name • progress bar • count • +/- buttons
+/// Updated with Antigravity Design: Glassmorphism & Weightlessness.
 class QuestTracker extends StatelessWidget {
   final String label;
   final IconData icon;
@@ -46,111 +46,114 @@ class QuestTracker extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
       decoration: BoxDecoration(
-        color: ShadowColors.surface,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(
-          color: _isDone
-              ? ShadowColors.success.withValues(alpha: 0.4)
-              : ShadowColors.amethyst.withValues(alpha: 0.15),
-          width: 1.2,
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: (_isDone ? ShadowColors.success : ShadowColors.amethyst)
-                .withValues(alpha: 0.1),
-            blurRadius: 8,
-            spreadRadius: 0,
-            offset: const Offset(0, 3),
-          ),
-        ],
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: ShadowColors.weightlessShadow,
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // ── Top row: icon + label + count + buttons ──
-          Row(
-            children: [
-              // Icon
-              Container(
-                width: 40,
-                height: 40,
-                decoration: BoxDecoration(
-                  color: ShadowColors.surfaceAlt,
-                  borderRadius: BorderRadius.circular(10),
-                  border: Border.all(
-                      color: _accentColor.withValues(alpha: 0.4), width: 1),
-                ),
-                child: Icon(icon, color: _accentColor, size: 20),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(20),
+        child: BackdropFilter(
+          filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+            decoration: BoxDecoration(
+              color: ShadowColors.surface.withValues(alpha: 0.7),
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(
+                color: _isDone
+                    ? ShadowColors.success.withValues(alpha: 0.4)
+                    : ShadowColors.glassBorder.withValues(alpha: 0.2),
+                width: 1.2,
               ),
-              const SizedBox(width: 12),
-
-              // Label + unit
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // ── Top row: icon + label + count + buttons ──
+                Row(
                   children: [
-                    Text(
-                      label.toUpperCase(),
-                      style: ShadowTextTheme.mono(
-                        11,
-                        color: ShadowColors.textSecondary,
-                        weight: FontWeight.bold,
+                    // Icon
+                    Container(
+                      width: 40,
+                      height: 40,
+                      decoration: BoxDecoration(
+                        color: ShadowColors.surfaceAlt,
+                        borderRadius: BorderRadius.circular(10),
+                        border: Border.all(
+                            color: _accentColor.withValues(alpha: 0.4), width: 1),
+                      ),
+                      child: Icon(icon, color: _accentColor, size: 20),
+                    ),
+                    const SizedBox(width: 12),
+
+                    // Label + unit
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            label.toUpperCase(),
+                            style: ShadowTextTheme.mono(
+                              11,
+                              color: ShadowColors.textSecondary,
+                              weight: FontWeight.bold,
+                            ),
+                          ),
+                          const SizedBox(height: 2),
+                          // Progress fraction
+                          Text(
+                            isDecimal
+                                ? '${(completed / 10).toStringAsFixed(1)} / ${(target / 10).toStringAsFixed(1)} $unit'
+                                : '$completed / $target $unit',
+                            style: ShadowTextTheme.mono(
+                              15,
+                              color: _isDone
+                                  ? ShadowColors.success
+                                  : ShadowColors.textPrimary,
+                              weight: FontWeight.bold,
+                            ),
+                          ),
+                        ],
                       ),
                     ),
-                    const SizedBox(height: 2),
-                    // Progress fraction
-                    Text(
-                      isDecimal
-                          ? '${(completed / 10).toStringAsFixed(1)} / ${(target / 10).toStringAsFixed(1)} $unit'
-                          : '$completed / $target $unit',
-                      style: ShadowTextTheme.mono(
-                        15,
-                        color: _isDone
-                            ? ShadowColors.success
-                            : ShadowColors.textPrimary,
-                        weight: FontWeight.bold,
-                      ),
+
+                    // Subtract button
+                    _ControlButton(
+                      icon: Icons.remove,
+                      onTap: onSubtract,
+                      onLongPress: onLongSubtract,
+                      enabled: completed > 0,
+                      color: ShadowColors.textSecondary,
+                    ),
+                    const SizedBox(width: 8),
+
+                    // Add Rep button
+                    _ControlButton(
+                      icon: _isDone ? Icons.check_rounded : Icons.add_rounded,
+                      onTap: _isDone ? () {} : onAdd,
+                      onLongPress: _isDone ? null : onLongAdd,
+                      enabled: !_isDone,
+                      isDone: _isDone,
+                      color: _isDone ? ShadowColors.success : ShadowColors.amethyst,
+                      isPrimary: true,
                     ),
                   ],
                 ),
-              ),
 
-              // Subtract button
-              _ControlButton(
-                icon: Icons.remove,
-                onTap: onSubtract,
-                onLongPress: onLongSubtract,
-                enabled: completed > 0,
-                color: ShadowColors.textSecondary,
-              ),
-              const SizedBox(width: 8),
+                const SizedBox(height: 12),
 
-              // Add Rep button
-              _ControlButton(
-                icon: _isDone ? Icons.check_rounded : Icons.add_rounded,
-                onTap: _isDone ? () {} : onAdd,
-                onLongPress: _isDone ? null : onLongAdd,
-                enabled: !_isDone,
-                isDone: _isDone,
-                color: _isDone ? ShadowColors.success : ShadowColors.amethyst,
-                isPrimary: true,
-              ),
-            ],
+                // ── Smoky progress bar ──
+                SmokyProgressBar(
+                  currentValue: completed,
+                  maxValue: target,
+                  color: _accentColor,
+                  height: 8,
+                  particleCount: 18,
+                ),
+              ],
+            ),
           ),
-
-          const SizedBox(height: 12),
-
-          // ── Smoky progress bar ──
-          SmokyProgressBar(
-            currentValue: completed,
-            maxValue: target,
-            color: _accentColor,
-            height: 8,
-            particleCount: 18,
-          ),
-        ],
+        ),
       ),
     );
   }

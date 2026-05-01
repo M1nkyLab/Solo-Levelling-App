@@ -28,6 +28,19 @@ class _Particle {
 }
 
 // ─────────────────────────────────────────────
+//  Pre-allocated paint pool — avoids per-frame
+//  Paint() allocations inside paint().
+// ─────────────────────────────────────────────
+final _trackPaint  = Paint();
+final _fillPaint   = Paint();
+final _smokePaint  = Paint();
+final _shimmerPaint = Paint();
+final _glowPaint   = Paint();
+final _edgePaint   = Paint();
+final _sparkPaint  = Paint();
+final _auraPaint   = Paint();
+
+// ─────────────────────────────────────────────
 //  CustomPainter — draws one frame
 // ─────────────────────────────────────────────
 class _SmokePainter extends CustomPainter {
@@ -56,13 +69,12 @@ class _SmokePainter extends CustomPainter {
     if (w <= 0 || h <= 0) return;
 
     final double fillW = (w * fillProgress).clamp(0.0, w);
+    final trackRRect = RRect.fromRectAndRadius(
+      Rect.fromLTWH(0, 0, w, h), Radius.circular(barRadius));
 
     // ── 1. Track ────────────────────────────────────────────────
-    canvas.drawRRect(
-      RRect.fromRectAndRadius(Rect.fromLTWH(0, 0, w, h),
-          Radius.circular(barRadius)),
-      Paint()..color = trackColor,
-    );
+    _trackPaint.color = trackColor;
+    canvas.drawRRect(trackRRect, _trackPaint);
 
     if (fillProgress <= 0.001) return;
 
@@ -79,20 +91,17 @@ class _SmokePainter extends CustomPainter {
     canvas.clipRRect(fillRRect);
 
     // ── 3. Base gradient fill ─────────────────────────────────────
-    canvas.drawRRect(
-      fillRRect,
-      Paint()
-        ..shader = LinearGradient(
-          begin: Alignment.centerLeft,
-          end: Alignment.centerRight,
-          colors: [
-            accentColor.withValues(alpha: 0.25),
-            accentColor.withValues(alpha: 0.65),
-            accentColor,
-          ],
-          stops: const [0.0, 0.55, 1.0],
-        ).createShader(Rect.fromLTWH(0, 0, fillW, h)),
-    );
+    _fillPaint.shader = LinearGradient(
+      begin: Alignment.centerLeft,
+      end: Alignment.centerRight,
+      colors: [
+        accentColor.withValues(alpha: 0.25),
+        accentColor.withValues(alpha: 0.65),
+        accentColor,
+      ],
+      stops: const [0.0, 0.55, 1.0],
+    ).createShader(Rect.fromLTWH(0, 0, fillW, h));
+    canvas.drawRRect(fillRRect, _fillPaint);
 
     // ── 4. Smoke / particle layer ────────────────────────────────
     for (final p in particles) {
@@ -126,38 +135,30 @@ class _SmokePainter extends CustomPainter {
       final double drawR = r * 2.5;
       if (drawR < 0.5) continue;
 
-      canvas.drawCircle(
-        center,
-        drawR,
-        Paint()
-          ..shader = RadialGradient(
-            colors: [
-              accentColor.withValues(alpha: p.opacity * edgeFade * 0.9),
-              accentColor.withValues(alpha: 0),
-            ],
-          ).createShader(Rect.fromCircle(center: center, radius: drawR)),
-      );
+      // Reuse _smokePaint — avoids a new Paint() allocation per particle
+      _smokePaint.shader = RadialGradient(
+        colors: [
+          accentColor.withValues(alpha: p.opacity * edgeFade * 0.9),
+          accentColor.withValues(alpha: 0),
+        ],
+      ).createShader(Rect.fromCircle(center: center, radius: drawR));
+      canvas.drawCircle(center, drawR, _smokePaint);
     }
 
     // ── 5. Shimmer sweep ─────────────────────────────────────────
-    // A bright band that slowly sweeps across the filled area
     final double shimmerPos = (smokeTime * 0.35 % 1.5 - 0.25) * fillW;
-    // Only draw shimmer if the shader rect has a non-zero width
     const double shimmerW = 160.0;
     final Rect shimmerRect = Rect.fromLTWH(shimmerPos - shimmerW / 2, 0, shimmerW, h);
     if (shimmerRect.width > 0 && shimmerRect.height > 0) {
-      canvas.drawRRect(
-        fillRRect,
-        Paint()
-          ..shader = LinearGradient(
-            colors: [
-              Colors.transparent,
-              Colors.white.withValues(alpha: 0.09),
-              Colors.transparent,
-            ],
-            stops: const [0.0, 0.5, 1.0],
-          ).createShader(shimmerRect),
-      );
+      _shimmerPaint.shader = LinearGradient(
+        colors: [
+          Colors.transparent,
+          Colors.white.withValues(alpha: 0.09),
+          Colors.transparent,
+        ],
+        stops: const [0.0, 0.5, 1.0],
+      ).createShader(shimmerRect);
+      canvas.drawRRect(fillRRect, _shimmerPaint);
     }
 
     canvas.restore();
@@ -167,48 +168,42 @@ class _SmokePainter extends CustomPainter {
       final double glow = 0.55 + 0.45 * math.sin(smokeTime * 4.5);
 
       // Outer soft halo
-      canvas.drawLine(
-        Offset(fillW, 2),
-        Offset(fillW, h - 2),
-        Paint()
-          ..color = accentColor.withValues(alpha: 0.12 * glow)
-          ..strokeWidth = 12
-          ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 5),
-      );
+      _glowPaint
+        ..color = accentColor.withValues(alpha: 0.12 * glow)
+        ..strokeWidth = 12
+        ..style = PaintingStyle.stroke
+        ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 5);
+      canvas.drawLine(Offset(fillW, 2), Offset(fillW, h - 2), _glowPaint);
 
       // Inner bright line
-      canvas.drawLine(
-        Offset(fillW, 1),
-        Offset(fillW, h - 1),
-        Paint()
-          ..color = accentColor.withValues(alpha: 0.9 * glow)
-          ..strokeWidth = 1.2
-          ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 1.5),
-      );
+      _edgePaint
+        ..color = accentColor.withValues(alpha: 0.9 * glow)
+        ..strokeWidth = 1.2
+        ..style = PaintingStyle.stroke
+        ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 1.5);
+      canvas.drawLine(Offset(fillW, 1), Offset(fillW, h - 1), _edgePaint);
 
       // Tiny spark at the leading tip
-      final double sparkY = h / 2;
-      final double sparkR = 2.5 * glow;
-      canvas.drawCircle(
-        Offset(fillW, sparkY),
-        sparkR,
-        Paint()
-          ..color = Colors.white.withValues(alpha: 0.8 * glow)
-          ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 2),
-      );
+      _sparkPaint
+        ..color = Colors.white.withValues(alpha: 0.8 * glow)
+        ..style = PaintingStyle.fill
+        ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 2);
+      canvas.drawCircle(Offset(fillW, h / 2), 2.5 * glow, _sparkPaint);
     }
 
     // ── 7. Completion aura (full bar) ────────────────────────────
     if (fillProgress >= 0.985) {
       final double aura = 0.45 + 0.55 * math.sin(smokeTime * 2.8);
+      _auraPaint
+        ..color = accentColor.withValues(alpha: 0.15 * aura)
+        ..style = PaintingStyle.fill
+        ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 4);
       canvas.drawRRect(
         RRect.fromRectAndRadius(
           Rect.fromLTWH(-2, -1, w + 4, h + 2),
           Radius.circular(barRadius + 1),
         ),
-        Paint()
-          ..color = accentColor.withValues(alpha: 0.15 * aura)
-          ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 4),
+        _auraPaint,
       );
     }
   }
@@ -259,7 +254,11 @@ class _SmokyProgressBarState extends State<SmokyProgressBar>
   // Drives the continuous smoke / shimmer animation
   late AnimationController _smokeCtrl;
 
-  double _smokeTime = 0;
+  // ── PERF: ValueNotifier avoids setState rebuilds on every smoke tick.
+  // The combined Listenable merges both so CustomPaint repaints directly.
+  late final ValueNotifier<double> _smokeTime;
+  late Listenable _repaintSignal;
+
   late List<_Particle> _particles;
 
   @override
@@ -274,10 +273,15 @@ class _SmokyProgressBarState extends State<SmokyProgressBar>
     );
     _fillAnim = AlwaysStoppedAnimation(initial);
 
-    // Smoke ticker — ~60 fps updates via addListener
+    _smokeTime = ValueNotifier(0.0);
+
+    // Merge fill + smoke into one Listenable for the CustomPainter.
+    _repaintSignal = Listenable.merge([_fillCtrl, _smokeTime]);
+
+    // Smoke ticker — advances _smokeTime without calling setState.
     _smokeCtrl = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 16), // irrelevant — we use repeat
+      duration: const Duration(milliseconds: 16),
     )..addListener(_onSmokeTick)
       ..repeat();
 
@@ -305,12 +309,11 @@ class _SmokyProgressBarState extends State<SmokyProgressBar>
     });
   }
 
+  // ── PERF: No setState — just nudge the ValueNotifier.
+  // CustomPaint listens directly and schedules only a repaint, not a rebuild.
   void _onSmokeTick() {
     if (!mounted) return;
-    setState(() {
-      // Advance smoke time by ~16ms per tick
-      _smokeTime += 0.016;
-    });
+    _smokeTime.value += 0.016;
   }
 
   @override
@@ -334,6 +337,7 @@ class _SmokyProgressBarState extends State<SmokyProgressBar>
   void dispose() {
     _fillCtrl.dispose();
     _smokeCtrl.dispose();
+    _smokeTime.dispose();
     super.dispose();
   }
 
@@ -342,24 +346,28 @@ class _SmokyProgressBarState extends State<SmokyProgressBar>
     final accent = widget.color ?? ShadowColors.amethyst;
     final radius = widget.height / 2;
 
-    return AnimatedBuilder(
-      animation: _fillCtrl,
-      builder: (context, _) {
-        return SizedBox(
-          height: widget.height,
-          width: double.infinity,
-          child: CustomPaint(
+    // ── PERF: RepaintBoundary isolates this bar so its repaints
+    // don't force adjacent widgets to also repaint.
+    return RepaintBoundary(
+      child: SizedBox(
+        height: widget.height,
+        width: double.infinity,
+        // Pass the merged Listenable so CustomPaint drives its own
+        // repaint without triggering a build() anywhere.
+        child: AnimatedBuilder(
+          animation: _repaintSignal,
+          builder: (_, __) => CustomPaint(
             painter: _SmokePainter(
               fillProgress: _fillAnim.value,
-              smokeTime: _smokeTime,
+              smokeTime: _smokeTime.value,
               particles: _particles,
               accentColor: accent,
               trackColor: ShadowColors.surfaceAlt,
               barRadius: radius,
             ),
           ),
-        );
-      },
+        ),
+      ),
     );
   }
 }

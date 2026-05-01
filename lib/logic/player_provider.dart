@@ -1,9 +1,12 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../models/player.dart';
 import '../models/player_rank.dart';
-import 'system_logic.dart';
+import '../services/player_service.dart';
 
 class PlayerNotifier extends StateNotifier<Player> {
+  final PlayerService _playerService = PlayerService();
+
   PlayerNotifier() : super(Player(
     level: 9,
     rank: PlayerRank.E,
@@ -13,47 +16,34 @@ class PlayerNotifier extends StateNotifier<Player> {
     maxHp: 100,
   ));
 
-  void addXp(int amount) {
-    int newExp = state.currentExp + amount;
-    int newLevel = state.level;
-    int newMaxXp = state.maxExp;
-    int newMaxHp = state.maxHp;
-    int newCurrentHp = state.currentHp;
+  /// Adds XP by calling the "API endpoint" in PlayerService.
+  /// Demonstrates consistent response handling.
+  Future<void> addXp(int amount) async {
+    final response = await _playerService.addExperience(state, amount);
 
-    while (newExp >= newMaxXp) {
-      newExp -= newMaxXp;
-      newLevel++;
-      newMaxXp = SystemLogic.xpToNextLevel(newLevel);
-      // Scaling stats on level up
-      newMaxHp = SystemLogic.calculateMaxHp(vitality: newLevel);
-      newCurrentHp = newMaxHp;
+    if (response.success && response.data != null) {
+      // 1. Success path: update state with new data
+      state = response.data!;
+      
+      // Determine rank based on level (UI specific logic)
+      final newRank = _determineRankFromLevel(state.level);
+      state = state.copyWith(rank: newRank);
+    } else {
+      // 2. Error path: handle error (e.g., log it, or show a notification)
+      // In a real app, you might have an 'errorProvider' or use a SnackBar
+      debugPrint('API Error adding XP: ${response.error}');
     }
-
-    // Determine rank based on level
-    final newRank = _determineRankFromLevel(newLevel);
-
-    state = state.copyWith(
-      level: newLevel,
-      currentExp: newExp,
-      maxExp: newMaxXp,
-      currentHp: newCurrentHp,
-      maxHp: newMaxHp,
-      rank: newRank,
-    );
   }
 
-  void executePenalty() {
-    // ── Penalty: Loss of 30% Max HP and 20% of current EXP ──
-    final hpLoss = (state.maxHp * 0.3).round();
-    final xpLoss = (state.currentExp * 0.2).round();
+  /// Executes penalty via PlayerService.
+  Future<void> executePenalty() async {
+    final response = await _playerService.applyPenalty(state);
 
-    final newHp = (state.currentHp - hpLoss).clamp(1, state.maxHp);
-    final newXp = (state.currentExp - xpLoss).clamp(0, state.maxExp);
-
-    state = state.copyWith(
-      currentHp: newHp,
-      currentExp: newXp,
-    );
+    if (response.success && response.data != null) {
+      state = response.data!;
+    } else {
+      debugPrint('API Error applying penalty: ${response.error}');
+    }
   }
 
   PlayerRank _determineRankFromLevel(int level) {

@@ -13,6 +13,9 @@ dependencies:
   # State Management
   flutter_riverpod: ^2.5.1
 
+  # Matrix math
+  vector_math: ^2.1.4
+
   # Google Fonts – Cinzel (serif headlines) + Roboto Mono + Rajdhani (body)
   google_fonts: ^6.2.1
 

@@ -1,4 +1,5 @@
 
+import 'dart:ui';
 import 'package:flutter/material.dart';
 
 import '../logic/system_logic.dart';
@@ -57,11 +58,28 @@ class _PlayerStatusHeaderState extends State<PlayerStatusHeader>
     _pulseCtrl = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 1600),
-    )..repeat(reverse: true);
+    );
 
     _pulse = Tween<double>(begin: 0.0, end: 1.0).animate(
       CurvedAnimation(parent: _pulseCtrl, curve: Curves.easeInOut),
     );
+
+    // ── PERF: Only run the pulse animation when a rank-up is available.
+    // Running it unconditionally wastes CPU+GPU every frame with no
+    // visible effect (the glow opacity is constant when not ready).
+    if (_rankUpReady) _pulseCtrl.repeat(reverse: true);
+  }
+
+  @override
+  void didUpdateWidget(PlayerStatusHeader old) {
+    super.didUpdateWidget(old);
+    // Toggle animation when rank-up eligibility changes.
+    if (_rankUpReady && !_pulseCtrl.isAnimating) {
+      _pulseCtrl.repeat(reverse: true);
+    } else if (!_rankUpReady && _pulseCtrl.isAnimating) {
+      _pulseCtrl.stop();
+      _pulseCtrl.reset();
+    }
   }
 
   @override
@@ -83,14 +101,15 @@ class _PlayerStatusHeaderState extends State<PlayerStatusHeader>
       builder: (context, child) {
         // Glow intensity pulses when rank-up is available
         final double glowOpacity =
-            _rankUpReady ? 0.15 + 0.20 * _pulse.value : 0.08;
+            _rankUpReady ? 0.20 + 0.20 * _pulse.value : 0.12;
 
         return Container(
           margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
           decoration: BoxDecoration(
-            color: ShadowColors.surface,
             borderRadius: BorderRadius.circular(20),
             boxShadow: [
+              // Weightless shadows
+              ...ShadowColors.weightlessShadow,
               // Ambient purple glow – tighter and crisper
               BoxShadow(
                 color: ShadowColors.amethyst.withValues(alpha: glowOpacity),
@@ -99,7 +118,23 @@ class _PlayerStatusHeaderState extends State<PlayerStatusHeader>
               ),
             ],
           ),
-          child: child,
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(20),
+            child: BackdropFilter(
+              filter: ImageFilter.blur(sigmaX: 16, sigmaY: 16),
+              child: Container(
+                decoration: BoxDecoration(
+                  color: ShadowColors.surface.withValues(alpha: 0.75),
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(
+                    color: ShadowColors.glassBorder.withValues(alpha: 0.25),
+                    width: 1.5,
+                  ),
+                ),
+                child: child,
+              ),
+            ),
+          ),
         );
       },
       child: Padding(

@@ -13,6 +13,11 @@ class ShadowColors {
   static const Color surface   = Color(0xFF111118);      // Card / surface base
   static const Color surfaceAlt= Color(0xFF1A1A26);      // Elevated card layer
 
+  // Glassmorphism / Translucent
+  static const Color glassSurface   = Color(0x1AFFFFFF); // Very subtle white overlay
+  static const Color glassBorder    = Color(0x33FFFFFF); // Translucent border
+  static const Color glassAmethyst  = Color(0x1A8A2BE2); // Translucent amethyst
+
   // Accents
   static const Color amethyst       = Color(0xFF8A2BE2); // Primary – glowing purple
   static const Color amethystLight  = Color(0xFFAB5CF7); // Hover / highlight
@@ -28,6 +33,20 @@ class ShadowColors {
   static const Color success        = Color(0xFF4CAF50);
   static const Color warning        = Color(0xFFFFA726);
   static const Color xpGold         = Color(0xFFFFD700); // XP / reward
+
+  // Shadow Layers (Antigravity Style)
+  static List<BoxShadow> get weightlessShadow => [
+    BoxShadow(
+      color: Colors.black.withValues(alpha: 0.1),
+      blurRadius: 40,
+      offset: const Offset(0, 20),
+    ),
+    BoxShadow(
+      color: Colors.black.withValues(alpha: 0.05),
+      blurRadius: 10,
+      offset: const Offset(0, 5),
+    ),
+  ];
 }
 
 // ─────────────────────────────────────────────

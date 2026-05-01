@@ -1,24 +1,17 @@
+import 'dart:ui';
 import 'package:flutter/material.dart';
+import 'package:vector_math/vector_math_64.dart' as v64;
 import '../theme/app_theme.dart';
 
 /// A reusable stat/info card with the Shadow Monarch glow aesthetic.
-///
-/// Usage:
-/// ```dart
-/// ShadowCard(
-///   title: 'Strength',
-///   value: '247',
-///   icon: Icons.fitness_center,
-///   accentColor: ShadowColors.amethyst,
-/// )
-/// ```
+/// Updated with Antigravity Design principles: Glassmorphism & Spatial Depth.
 class ShadowCard extends StatefulWidget {
   final String title;
   final String value;
   final IconData icon;
   final Color? accentColor;
   final VoidCallback? onTap;
-  final Widget? badge;        // optional badge (e.g., level-up indicator)
+  final Widget? badge;
 
   const ShadowCard({
     super.key,
@@ -38,6 +31,7 @@ class _ShadowCardState extends State<ShadowCard>
     with SingleTickerProviderStateMixin {
   late AnimationController _glowController;
   late Animation<double> _glowAnim;
+  bool _isHovered = false;
   bool _pressed = false;
 
   @override
@@ -45,10 +39,10 @@ class _ShadowCardState extends State<ShadowCard>
     super.initState();
     _glowController = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 1800),
+      duration: const Duration(milliseconds: 2400),
     )..repeat(reverse: true);
 
-    _glowAnim = Tween<double>(begin: 0.4, end: 1.0).animate(
+    _glowAnim = Tween<double>(begin: 0.3, end: 1.0).animate(
       CurvedAnimation(parent: _glowController, curve: Curves.easeInOut),
     );
   }
@@ -62,49 +56,72 @@ class _ShadowCardState extends State<ShadowCard>
   @override
   Widget build(BuildContext context) {
     final accent = widget.accentColor ?? ShadowColors.amethyst;
-    final glowColor = accent.withValues(alpha: 0.35);
+    final glowColor = accent.withValues(alpha: 0.25);
 
-    return GestureDetector(
-      onTap: widget.onTap,
-      onTapDown: (_) => setState(() => _pressed = true),
-      onTapUp: (_) => setState(() => _pressed = false),
-      onTapCancel: () => setState(() => _pressed = false),
-      child: AnimatedBuilder(
-        animation: _glowAnim,
-        builder: (context, child) {
-          return AnimatedContainer(
-            duration: const Duration(milliseconds: 120),
-            transform: Matrix4.diagonal3Values(
-              _pressed ? 0.97 : 1.0, _pressed ? 0.97 : 1.0, 1.0),
-            transformAlignment: Alignment.center,
-            decoration: BoxDecoration(
-              color: ShadowColors.surface,
-              borderRadius: BorderRadius.circular(16),
-              boxShadow: [
-                // Ambient purple glow – tighter and sharper
-                BoxShadow(
-                  color: glowColor.withValues(alpha: glowColor.a * _glowAnim.value),
-                  blurRadius: 12,
-                  spreadRadius: 0,
-                  offset: const Offset(0, 4),
+    return MouseRegion(
+      onEnter: (_) => setState(() => _isHovered = true),
+      onExit: (_) => setState(() => _isHovered = false),
+      child: GestureDetector(
+        onTap: widget.onTap,
+        onTapDown: (_) => setState(() => _pressed = true),
+        onTapUp: (_) => setState(() => _pressed = false),
+        onTapCancel: () => setState(() => _pressed = false),
+        child: AnimatedBuilder(
+          animation: _glowAnim,
+          builder: (context, child) {
+            // Apply 3D perspective tilt (Spatial Depth)
+            final double s = _pressed ? 0.96 : (_isHovered ? 1.02 : 1.0);
+            final Matrix4 transform = Matrix4.identity()
+              ..setEntry(3, 2, 0.001) // perspective
+              ..rotateX(_isHovered ? -0.05 : 0.0)
+              ..rotateY(_isHovered ? 0.05 : 0.0)
+              ..scaleByVector3(v64.Vector3(s, s, 1.0));
+
+            return AnimatedContainer(
+              duration: const Duration(milliseconds: 300),
+              curve: Curves.easeOutCubic,
+              transform: transform,
+              transformAlignment: Alignment.center,
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(20),
+                boxShadow: [
+                  // Layered soft shadows (Weightlessness)
+                  ...ShadowColors.weightlessShadow,
+                  // Dynamic accent glow
+                  BoxShadow(
+                    color: glowColor.withValues(
+                        alpha: glowColor.a * _glowAnim.value * (_isHovered ? 1.5 : 1.0)),
+                    blurRadius: _isHovered ? 30 : 20,
+                    spreadRadius: _isHovered ? 2 : 0,
+                  ),
+                ],
+              ),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(20),
+                child: BackdropFilter(
+                  filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
+                  child: Container(
+                    decoration: BoxDecoration(
+                      color: ShadowColors.surface.withValues(alpha: 0.7),
+                      borderRadius: BorderRadius.circular(20),
+                      border: Border.all(
+                        color: ShadowColors.glassBorder.withValues(
+                            alpha: _isHovered ? 0.4 : 0.2),
+                        width: 1.5,
+                      ),
+                    ),
+                    child: _CardContent(
+                      title: widget.title,
+                      value: widget.value,
+                      icon: widget.icon,
+                      accent: accent,
+                      badge: widget.badge,
+                    ),
+                  ),
                 ),
-                // Subtle inner depth shadow
-                BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.4),
-                  blurRadius: 6,
-                  offset: const Offset(0, 2),
-                ),
-              ],
-            ),
-            child: child,
-          );
-        },
-        child: _CardContent(
-          title: widget.title,
-          value: widget.value,
-          icon: widget.icon,
-          accent: accent,
-          badge: widget.badge,
+              ),
+            );
+          },
         ),
       ),
     );
