@@ -20,7 +20,7 @@ dependencies:
   google_fonts: ^6.2.1
 
   # Supabase Flutter SDK
-  supabase_flutter: ^2.5.0
+  supabase_flutter: ^2.12.4
 
   # Local storage for offline quest caching
   shared_preferences: ^2.2.3
@@ -29,6 +29,7 @@ dependencies:
   proximity_sensor: ^1.3.10
   sensors_plus: ^6.1.1
   light: ^5.0.0
+  flutter_dotenv: ^6.0.1
 
 dev_dependencies:
   flutter_test:
@@ -37,3 +38,5 @@ dev_dependencies:
 
 flutter:
   uses-material-design: true
+  assets:
+    - .env

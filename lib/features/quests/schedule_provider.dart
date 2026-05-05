@@ -22,18 +22,18 @@ class ScheduleState {
 }
 
 class ScheduleNotifier extends StateNotifier<ScheduleState> {
-  ScheduleNotifier() : super(ScheduleState(days: [1, 3, 5])) {
-    _loadState();
-  }
+  ScheduleNotifier() : super(ScheduleState(days: [1, 3, 5]));
 
-  static const String _scheduleKey = 'workout_schedule';
-  static const String _configuredKey = 'is_schedule_configured';
+  static const String _scheduleKeyPrefix = 'workout_schedule_';
+  static const String _configuredKeyPrefix = 'is_schedule_configured_';
+  String? _currentUserId;
 
-  Future<void> _loadState() async {
+  Future<void> loadForUser(String userId) async {
+    _currentUserId = userId;
     try {
       final prefs = await SharedPreferences.getInstance();
-      final schedule = prefs.getStringList(_scheduleKey);
-      final isConfigured = prefs.getBool(_configuredKey) ?? false;
+      final schedule = prefs.getStringList('${_scheduleKeyPrefix}$userId');
+      final isConfigured = prefs.getBool('${_configuredKeyPrefix}$userId') ?? false;
       
       if (schedule != null) {
         state = state.copyWith(
@@ -41,11 +41,16 @@ class ScheduleNotifier extends StateNotifier<ScheduleState> {
           isConfigured: isConfigured,
         );
       } else {
-        state = state.copyWith(isConfigured: isConfigured);
+        state = state.copyWith(days: [1, 3, 5], isConfigured: isConfigured);
       }
     } catch (e) {
       // Handle or log error
     }
+  }
+
+  void reset() {
+    _currentUserId = null;
+    state = ScheduleState(days: [1, 3, 5], isConfigured: false);
   }
 
   void toggleDay(int day) {
@@ -62,16 +67,19 @@ class ScheduleNotifier extends StateNotifier<ScheduleState> {
 
   Future<void> confirmSchedule() async {
     state = state.copyWith(isConfigured: true);
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setBool(_configuredKey, true);
-    _saveState();
+    if (_currentUserId != null) {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setBool('${_configuredKeyPrefix}$_currentUserId', true);
+      _saveState();
+    }
   }
 
   Future<void> _saveState() async {
+    if (_currentUserId == null) return;
     try {
       final prefs = await SharedPreferences.getInstance();
       await prefs.setStringList(
-        _scheduleKey, 
+        '${_scheduleKeyPrefix}$_currentUserId', 
         state.days.map((d) => d.toString()).toList(),
       );
     } catch (e) {

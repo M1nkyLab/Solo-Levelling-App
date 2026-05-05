@@ -2,47 +2,57 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:solo_levelling_app/core/theme/app_theme.dart';
 import 'package:solo_levelling_app/features/auth/auth_provider.dart';
-import 'package:solo_levelling_app/features/auth/sign_up_screen.dart';
 
-class LoginScreen extends ConsumerStatefulWidget {
-  const LoginScreen({super.key});
+class SignUpScreen extends ConsumerStatefulWidget {
+  const SignUpScreen({super.key});
 
   @override
-  ConsumerState<LoginScreen> createState() => _LoginScreenState();
+  ConsumerState<SignUpScreen> createState() => _SignUpScreenState();
 }
 
-class _LoginScreenState extends ConsumerState<LoginScreen> {
+class _SignUpScreenState extends ConsumerState<SignUpScreen> {
+  final _usernameController = TextEditingController();
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   bool _showPassword = false;
 
   @override
   void dispose() {
+    _usernameController.dispose();
     _emailController.dispose();
     _passwordController.dispose();
     super.dispose();
   }
 
-  void _handleLogin() async {
+  void _handleSignUp() async {
+    final username = _usernameController.text.trim();
     final email = _emailController.text.trim();
     final password = _passwordController.text.trim();
 
-    if (email.isEmpty || password.isEmpty) {
+    if (username.isEmpty || email.isEmpty || password.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please enter credentials')),
+        const SnackBar(content: Text('PLEASE FILL ALL DATA FIELDS.')),
       );
       return;
     }
 
-    final success = await ref.read(authProvider.notifier).login(email, password);
+    final success = await ref.read(authProvider.notifier).signUp(email, password, username);
 
     if (!mounted) return;
 
-    if (!success) {
+    if (success) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('REGISTRATION SUCCESSFUL. CHECK EMAIL IF REQUIRED.'),
+          backgroundColor: ShadowColors.amethyst,
+        ),
+      );
+      Navigator.of(context).pop();
+    } else {
       final error = ref.read(authProvider).error;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(error ?? 'INVALID CREDENTIALS. SYSTEM ACCESS DENIED.'),
+          content: Text(error ?? 'REGISTRATION FAILED.'),
           backgroundColor: ShadowColors.hpRed,
         ),
       );
@@ -54,6 +64,15 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     final authState = ref.watch(authProvider);
 
     return Scaffold(
+      appBar: AppBar(
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back, color: ShadowColors.amethystLight),
+          onPressed: () => Navigator.of(context).pop(),
+        ),
+      ),
+      extendBodyBehindAppBar: true,
       body: Container(
         decoration: const BoxDecoration(
           gradient: LinearGradient(
@@ -72,42 +91,31 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  // System Icon / Logo
-                  Container(
-                    width: 100,
-                    height: 100,
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      boxShadow: [
-                        BoxShadow(
-                          color: ShadowColors.amethyst.withValues(alpha: 0.3),
-                          blurRadius: 30,
-                          spreadRadius: 5,
-                        ),
-                      ],
-                    ),
-                    child: const Icon(
-                      Icons.shield_rounded,
-                      size: 60,
-                      color: ShadowColors.amethyst,
-                    ),
-                  ),
-                  const SizedBox(height: 32),
-
-                  // Title
                   Text(
-                    'THE SYSTEM',
-                    style: ShadowTextTheme.headline(28, weight: FontWeight.w900).copyWith(
-                      letterSpacing: 4,
+                    'NEW PLAYER REGISTRATION',
+                    style: ShadowTextTheme.headline(24, weight: FontWeight.w900).copyWith(
+                      letterSpacing: 2,
                       color: ShadowColors.amethystLight,
                     ),
+                    textAlign: TextAlign.center,
                   ),
                   const SizedBox(height: 8),
                   Text(
-                    'AUTHENTICATION REQUIRED',
-                    style: ShadowTextTheme.mono(12, color: ShadowColors.textSecondary),
+                    'INITIALIZING SHADOW MONARCH PROTOCOL',
+                    style: ShadowTextTheme.mono(10, color: ShadowColors.textSecondary),
                   ),
                   const SizedBox(height: 48),
+
+                  // Username Input
+                  TextField(
+                    controller: _usernameController,
+                    decoration: const InputDecoration(
+                      labelText: 'PLAYER NAME',
+                      prefixIcon: Icon(Icons.person_outline),
+                    ),
+                    style: ShadowTextTheme.mono(14),
+                  ),
+                  const SizedBox(height: 20),
 
                   // Email Input
                   TextField(
@@ -140,29 +148,15 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                   ),
                   const SizedBox(height: 40),
 
-                  // Login Button
+                  // Sign Up Button
                   SizedBox(
                     width: double.infinity,
                     height: 56,
                     child: ElevatedButton(
-                      onPressed: authState.isLoading ? null : _handleLogin,
+                      onPressed: authState.isLoading ? null : _handleSignUp,
                       child: authState.isLoading
                           ? const CircularProgressIndicator(strokeWidth: 2)
-                          : const Text('INITIALIZE ACCESS'),
-                    ),
-                  ),
-                  const SizedBox(height: 24),
-
-                  // Sign Up Link
-                  TextButton(
-                    onPressed: () {
-                      Navigator.of(context).push(
-                        MaterialPageRoute(builder: (context) => const SignUpScreen()),
-                      );
-                    },
-                    child: Text(
-                      'CREATE NEW HUNTER PROFILE',
-                      style: ShadowTextTheme.mono(12, color: ShadowColors.amethystLight),
+                          : const Text('ARISE'),
                     ),
                   ),
                 ],

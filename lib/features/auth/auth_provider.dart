@@ -1,79 +1,90 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 class AuthState {
   final bool isAuthenticated;
-  final String? username;
+  final User? user;
   final bool isLoading;
+  final String? error;
 
   AuthState({
     this.isAuthenticated = false,
-    this.username,
+    this.user,
     this.isLoading = false,
+    this.error,
   });
 
   AuthState copyWith({
     bool? isAuthenticated,
-    String? username,
+    User? user,
     bool? isLoading,
+    String? error,
   }) {
     return AuthState(
       isAuthenticated: isAuthenticated ?? this.isAuthenticated,
-      username: username ?? this.username,
+      user: user ?? this.user,
       isLoading: isLoading ?? this.isLoading,
+      error: error,
     );
   }
 }
 
 class AuthNotifier extends StateNotifier<AuthState> {
   AuthNotifier() : super(AuthState()) {
-    _checkAuth();
+    _init();
   }
 
-  static const String _authKey = 'is_authenticated';
-  static const String _userKey = 'username';
+  final _supabase = Supabase.instance.client;
 
-  Future<void> _checkAuth() async {
-    state = state.copyWith(isLoading: true);
-    final prefs = await SharedPreferences.getInstance();
-    final isAuthenticated = prefs.getBool(_authKey) ?? false;
-    final username = prefs.getString(_userKey);
-    
-    state = state.copyWith(
-      isAuthenticated: isAuthenticated,
-      username: username,
-      isLoading: false,
-    );
-  }
-
-  Future<bool> login(String username, String password) async {
-    state = state.copyWith(isLoading: true);
-    
-    // Simulate API delay
-    await Future.delayed(const Duration(seconds: 1));
-
-    // Temporary credentials
-    if (username == 'JinWoo' && password == 'level_up') {
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.setBool(_authKey, true);
-      await prefs.setString(_userKey, username);
-
+  void _init() {
+    _supabase.auth.onAuthStateChange.listen((data) {
+      final session = data.session;
       state = state.copyWith(
-        isAuthenticated: true,
-        username: username,
+        isAuthenticated: session != null,
+        user: session?.user,
         isLoading: false,
       );
-      return true;
-    }
+    });
+  }
 
-    state = state.copyWith(isLoading: false);
-    return false;
+  Future<bool> login(String email, String password) async {
+    state = state.copyWith(isLoading: true, error: null);
+    try {
+      await _supabase.auth.signInWithPassword(
+        email: email,
+        password: password,
+      );
+      return true;
+    } on AuthException catch (e) {
+      state = state.copyWith(isLoading: false, error: e.message);
+      return false;
+    } catch (e) {
+      state = state.copyWith(isLoading: false, error: 'An unexpected error occurred');
+      return false;
+    }
+  }
+
+  Future<bool> signUp(String email, String password, String username) async {
+    state = state.copyWith(isLoading: true, error: null);
+    try {
+      await _supabase.auth.signUp(
+        email: email,
+        password: password,
+        data: {'username': username},
+      );
+      state = state.copyWith(isLoading: false);
+      return true;
+    } on AuthException catch (e) {
+      state = state.copyWith(isLoading: false, error: e.message);
+      return false;
+    } catch (e) {
+      state = state.copyWith(isLoading: false, error: 'An unexpected error occurred');
+      return false;
+    }
   }
 
   Future<void> logout() async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.remove(_authKey);
-    await prefs.remove(_userKey);
+    await _supabase.auth.signOut();
     state = AuthState();
   }
 }

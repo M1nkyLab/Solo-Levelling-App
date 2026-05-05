@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter/scheduler.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:solo_levelling_app/core/theme/app_theme.dart';
 import 'package:solo_levelling_app/features/quests/dashboard_screen.dart';
 import 'package:solo_levelling_app/features/auth/login_screen.dart';
@@ -12,7 +13,13 @@ import 'package:solo_levelling_app/features/quests/schedule_selection_screen.dar
 void main() async {
   final binding = WidgetsFlutterBinding.ensureInitialized();
 
-  // ── PERF: Warm up shaders and cache before first frame
+  // ── SUPABASE: Initialize connection
+  await Supabase.initialize(
+    url: 'https://hrnkfckmvzplmnndmncn.supabase.co',
+    anonKey: 'sb_publishable_5qNpHH_QKfxgyiVX3_uuXA_774SJ2ny',
+  );
+
+  // ── PERF: Warm up shaders and cache
   await binding.defaultBinaryMessenger.send('flutter/service', null);
   SchedulerBinding.instance.addPostFrameCallback((_) {
     PaintingBinding.instance.imageCache.maximumSizeBytes = 50 << 20; // 50MB
@@ -40,6 +47,16 @@ class SoloLevellingApp extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final authState = ref.watch(authProvider);
     final scheduleState = ref.watch(scheduleProvider);
+
+    // ── SYSTEM: Handle per-user schedule and quest loading
+    ref.listen(authProvider, (previous, next) {
+      if (next.isAuthenticated && next.user != null) {
+        ref.read(scheduleProvider.notifier).loadForUser(next.user!.id);
+        ref.read(questProvider.notifier).fetchQuests(next.user!.id);
+      } else if (!next.isAuthenticated) {
+        ref.read(scheduleProvider.notifier).reset();
+      }
+    });
 
     Widget home;
     if (authState.isLoading) {
@@ -69,15 +86,21 @@ class SplashScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: Colors.black,
       body: Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            const CircularProgressIndicator(),
+            const CircularProgressIndicator(color: Colors.deepPurpleAccent),
             const SizedBox(height: 24),
             Text(
               'INITIALIZING SYSTEM...',
-              style: ShadowTextTheme.mono(12, color: ShadowColors.amethystLight),
+              style: TextStyle(
+                color: Colors.deepPurple[100],
+                fontFamily: 'monospace',
+                fontSize: 12,
+                letterSpacing: 2,
+              ),
             ),
           ],
         ),
@@ -85,5 +108,3 @@ class SplashScreen extends StatelessWidget {
     );
   }
 }
-
-
