@@ -1,0 +1,186 @@
+import 'dart:convert';
+import 'package:flutter/foundation.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:solo_levelling_app/features/player/player.dart';
+import 'package:solo_levelling_app/features/player/player_rank.dart';
+import 'package:solo_levelling_app/features/player/player_service.dart';
+
+class PlayerNotifier extends StateNotifier<Player> {
+  final PlayerService _playerService = PlayerService();
+
+  PlayerNotifier() : super(Player(
+    level: 9,
+    rank: PlayerRank.E,
+    currentExp: 480,
+    maxExp: 480,
+    currentHp: 80,
+    maxHp: 100,
+    strength: 15,
+    agility: 12,
+    vitality: 10,
+    intelligence: 10,
+    sense: 10,
+    availableStatPoints: 3,
+    lastPenaltyCheck: null,
+  )) {
+    _loadState();
+  }
+
+  static const String _playerKey = 'player_state';
+
+  Future<void> _loadState() async {
+    final prefs = await SharedPreferences.getInstance();
+    final jsonString = prefs.getString(_playerKey);
+    if (jsonString != null) {
+      try {
+        state = Player.fromJson(json.decode(jsonString));
+      } catch (e) {
+        debugPrint('Error loading player state: $e');
+      }
+    }
+  }
+
+  Future<void> _saveState() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_playerKey, json.encode(state.toJson()));
+  }
+
+  @override
+  set state(Player value) {
+    super.state = value;
+    _saveState();
+  }
+
+  /// Checks if a penalty should be applied based on missed scheduled days.
+  /// Returns the amount of EXP lost, or 0 if no penalty.
+  int checkSchedulePenalty(List<int> scheduledDays) {
+    if (state.lastPenaltyCheck == null) {
+      state = state.copyWith(lastPenaltyCheck: DateTime.now());
+      return 0;
+    }
+
+    final now = DateTime.now();
+    final lastCheck = state.lastPenaltyCheck!;
+    
+    // Check if we already checked today
+    final isAlreadyChecked = lastCheck.year == now.year && 
+                            lastCheck.month == now.month && 
+                            lastCheck.day == now.day;
+
+    if (isAlreadyChecked) return 0;
+
+    // For this prototype, we check if "Yesterday" was a scheduled day
+    // and if the user skipped it.
+    final yesterday = now.subtract(const Duration(days: 1));
+    final isYesterdayScheduled = scheduledDays.contains(yesterday.weekday);
+
+    if (isYesterdayScheduled) {
+      // 100 HP Vitality System: Apply rank-based damage
+      final damage = state.rank.hpLossOnMiss;
+      final newHp = (state.currentHp - damage).clamp(0, state.maxHp);
+      
+      state = state.copyWith(
+        currentHp: newHp,
+        lastPenaltyCheck: now,
+      );
+
+      // Check for death / demotion protocol
+      if (newHp == 0) {
+        _triggerDemotionProtocol();
+      }
+
+      return damage;
+    }
+
+    state = state.copyWith(lastPenaltyCheck: now);
+    return 0;
+  }
+
+  void _triggerDemotionProtocol() {
+    // 1. Demote to the max level of the PREVIOUS rank (The Rank Floor)
+    final floorLevel = state.rank.rankFloorLevel;
+    final previousRankIndex = (PlayerRank.values.indexOf(state.rank) - 1).clamp(0, PlayerRank.values.length - 1);
+    final previousRank = PlayerRank.values[previousRankIndex];
+
+    state = state.copyWith(
+      rank: previousRank,
+      level: floorLevel,
+      currentExp: 0,
+      trialStatus: TrialStatus.failed, // Mark as failed/penalty state
+      hasFailedTrial: true,
+    );
+    
+    debugPrint('DEMOTION PROTOCOL: Rank downgraded to ${previousRank.rankLabel}');
+  }
+
+  void completeTrial() {
+    final newLevel = state.level + 1;
+    final nextRank = _determineRankFromLevel(newLevel);
+
+    state = state.copyWith(
+      rank: nextRank,
+      level: newLevel,
+      currentExp: 0,
+      maxExp: (state.maxExp * 1.5).toInt(), // Scale difficulty for next rank
+      currentHp: (state.trialStatus == TrialStatus.failed) ? 30 : state.maxHp, // Revival: 30 HP
+      trialStatus: TrialStatus.idle,
+      hasFailedTrial: false,
+    );
+  }
+
+  void startTrial() {
+    state = state.copyWith(trialStatus: TrialStatus.active, hasFailedTrial: false);
+  }
+
+  void failTrial() {
+    state = state.copyWith(trialStatus: TrialStatus.failed, hasFailedTrial: true);
+  }
+
+  void resetTrial() {
+    state = state.copyWith(trialStatus: TrialStatus.idle);
+  }
+
+  /// Adds XP by calling the "API endpoint" in PlayerService.
+  /// Demonstrates consistent response handling.
+  Future<void> addXp(int amount) async {
+    final response = await _playerService.addExperience(state, amount);
+
+    if (response.success && response.data != null) {
+      // 1. Success path: update state with new data atomically
+      final updatedPlayer = response.data!;
+      
+      // Determine rank based on level (UI specific logic)
+      final newRank = _determineRankFromLevel(updatedPlayer.level);
+      state = updatedPlayer.copyWith(rank: newRank);
+    } else {
+      // 2. Error path: handle error (e.g., log it, or show a notification)
+      // In a real app, you might have an 'errorProvider' or use a SnackBar
+      debugPrint('API Error adding XP: ${response.error}');
+    }
+  }
+
+  /// Executes penalty via PlayerService.
+  Future<void> executePenalty() async {
+    final response = await _playerService.applyPenalty(state);
+
+    if (response.success && response.data != null) {
+      state = response.data!;
+    } else {
+      debugPrint('API Error applying penalty: ${response.error}');
+    }
+  }
+
+  PlayerRank _determineRankFromLevel(int level) {
+    if (level >= 91) return PlayerRank.S;
+    if (level >= 71) return PlayerRank.A;
+    if (level >= 46) return PlayerRank.B;
+    if (level >= 26) return PlayerRank.C;
+    if (level >= 11) return PlayerRank.D;
+    return PlayerRank.E;
+  }
+}
+
+final playerProvider = StateNotifierProvider<PlayerNotifier, Player>((ref) {
+  return PlayerNotifier();
+});

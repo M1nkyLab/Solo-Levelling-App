@@ -25,6 +25,11 @@ dependencies:
   # Local storage for offline quest caching
   shared_preferences: ^2.2.3
 
+  # Sensors for passive tracking
+  proximity_sensor: ^1.3.10
+  sensors_plus: ^6.1.1
+  light: ^5.0.0
+
 dev_dependencies:
   flutter_test:
     sdk: flutter
