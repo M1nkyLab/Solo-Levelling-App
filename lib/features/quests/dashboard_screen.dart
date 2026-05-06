@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:solo_levelling_app/features/player/player_provider.dart';
+import 'package:solo_levelling_app/features/player/player.dart';
 import 'package:solo_levelling_app/features/quests/quest_provider.dart';
 import 'package:solo_levelling_app/features/quests/schedule_provider.dart';
 import 'package:solo_levelling_app/features/quests/daily_quest.dart';
@@ -87,7 +88,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
     final quests = ref.watch(questProvider);
     final scheduleState = ref.watch(scheduleProvider);
 
-    final bool showTrialPortal = player.isTrialAvailable && !player.hasFailedTrial;
+    final bool showTrialPortal = player.isTrialAvailable && player.trialStatus != TrialStatus.failed;
     final bool allDone = quests.isNotEmpty && quests.every((q) => q.isCompleted);
 
     return Scaffold(
@@ -126,20 +127,28 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
                         ),
                       ),
                       
-                      const SizedBox(height: 24),
+                      const SizedBox(height: 32),
 
                       FadeTransition(
                         opacity: _staggeredAnims[1],
                         child: Center(
                           child: (allDone && !showTrialPortal)
                               ? _CompletionBanner(expReward: player.level * 25)
-                              : const DailyCountdownTimer(),
+                              : Column(
+                                  children: [
+                                    Text(
+                                      'T-MINUS',
+                                      style: ShadowTextTheme.mono(9, color: ShadowColors.textDisabled),
+                                    ),
+                                    const DailyCountdownTimer(),
+                                  ],
+                                ),
                         ),
                       ),
                       
                       const SizedBox(height: 32),
 
-                      if (player.hasFailedTrial) ...[
+                      if (player.trialStatus == TrialStatus.failed) ...[
                         Padding(
                           padding: const EdgeInsets.symmetric(horizontal: 16),
                           child: TrialFailedCard(onRetry: _enterTrial),
@@ -198,7 +207,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
     return Positioned.fill(
       child: IgnorePointer(
         child: Container(
-          color: ShadowColors.obsidian, // True black base
+          color: ShadowColors.voidDark, // Corrected to Midnight Void base
           child: Stack(
             children: [
               Positioned(
@@ -235,8 +244,8 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
       snap: true,
       expandedHeight: 0,
       title: Text(
-        'SHADOW LEVELING',
-        style: ShadowTextTheme.headline(15),
+        'SYSTEM OVERVIEW',
+        style: ShadowTextTheme.headline(15, letterSpacing: 2),
       ),
       actions: [
         Padding(
@@ -301,7 +310,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
                 const SizedBox(width: 10),
                 Expanded(
                   child: Text(
-                    isTrial ? 'URGENT: RANK UP TRIAL' : 'DAILY QUEST',
+                    isTrial ? 'URGENT: RANK UP TRIAL' : 'ACTIVE PROTOCOLS',
                     style: ShadowTextTheme.headline(18).copyWith(
                       color: isTrial ? ShadowColors.portalBlue : null,
                     ),

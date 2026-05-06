@@ -76,11 +76,7 @@ class ProfileScreen extends ConsumerWidget {
       ),
       title: Text(
         'HUNTER PROFILE',
-        style: ShadowTextTheme.headline(16).copyWith(
-          shadows: [
-            const Shadow(color: ShadowColors.amethyst, blurRadius: 8),
-          ],
-        ),
+        style: ShadowTextTheme.headline(16, letterSpacing: 2),
       ),
     );
   }
@@ -176,8 +172,8 @@ class ProfileScreen extends ConsumerWidget {
             Navigator.pop(context); // Close profile screen
           }
         },
-        icon: const Icon(Icons.logout_rounded, size: 18),
-        label: const Text('LOGOUT'),
+        icon: const Icon(Icons.link_off_rounded, size: 18),
+        label: const Text('SEVER CONNECTION'),
         style: OutlinedButton.styleFrom(
           foregroundColor: ShadowColors.hpRed,
           side: const BorderSide(color: ShadowColors.hpRed, width: 1.2),

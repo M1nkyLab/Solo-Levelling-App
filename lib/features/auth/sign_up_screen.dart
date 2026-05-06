@@ -92,7 +92,7 @@ class _SignUpScreenState extends ConsumerState<SignUpScreen> {
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   Text(
-                    'NEW PLAYER REGISTRATION',
+                    'HUNTER DESIGNATION REGISTRATION',
                     style: ShadowTextTheme.headline(24, weight: FontWeight.w900).copyWith(
                       letterSpacing: 2,
                       color: ShadowColors.amethystLight,
@@ -110,7 +110,7 @@ class _SignUpScreenState extends ConsumerState<SignUpScreen> {
                   TextField(
                     controller: _usernameController,
                     decoration: const InputDecoration(
-                      labelText: 'PLAYER NAME',
+                      labelText: 'HUNTER NAME',
                       prefixIcon: Icon(Icons.person_outline),
                     ),
                     style: ShadowTextTheme.mono(14),
@@ -122,7 +122,7 @@ class _SignUpScreenState extends ConsumerState<SignUpScreen> {
                     controller: _emailController,
                     keyboardType: TextInputType.emailAddress,
                     decoration: const InputDecoration(
-                      labelText: 'SYSTEM EMAIL',
+                      labelText: 'CREDENTIALS EMAIL (ID)',
                       prefixIcon: Icon(Icons.email_outlined),
                     ),
                     style: ShadowTextTheme.mono(14),
@@ -134,7 +134,7 @@ class _SignUpScreenState extends ConsumerState<SignUpScreen> {
                     controller: _passwordController,
                     obscureText: !_showPassword,
                     decoration: InputDecoration(
-                      labelText: 'ACCESS CODE',
+                      labelText: 'PASSWORD',
                       prefixIcon: const Icon(Icons.lock_outline),
                       suffixIcon: IconButton(
                         icon: Icon(

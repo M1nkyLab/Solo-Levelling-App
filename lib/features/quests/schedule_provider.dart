@@ -1,5 +1,7 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 class ScheduleState {
   final List<int> days;
@@ -24,27 +26,69 @@ class ScheduleState {
 class ScheduleNotifier extends StateNotifier<ScheduleState> {
   ScheduleNotifier() : super(ScheduleState(days: [1, 3, 5]));
 
+  final _supabase = Supabase.instance.client;
   static const String _scheduleKeyPrefix = 'workout_schedule_';
   static const String _configuredKeyPrefix = 'is_schedule_configured_';
   String? _currentUserId;
 
   Future<void> loadForUser(String userId) async {
     _currentUserId = userId;
+    
+    // 1. Try local cache first
+    await _loadFromLocal(userId);
+
+    // 2. Fetch from Supabase to sync
+    await _fetchFromSupabase(userId);
+  }
+
+  Future<void> _loadFromLocal(String userId) async {
     try {
       final prefs = await SharedPreferences.getInstance();
-      final schedule = prefs.getStringList('${_scheduleKeyPrefix}$userId');
-      final isConfigured = prefs.getBool('${_configuredKeyPrefix}$userId') ?? false;
+      final schedule = prefs.getStringList('$_scheduleKeyPrefix$userId');
+      final isConfigured = prefs.getBool('$_configuredKeyPrefix$userId') ?? false;
       
       if (schedule != null) {
         state = state.copyWith(
           days: schedule.map((s) => int.parse(s)).toList()..sort(),
           isConfigured: isConfigured,
         );
-      } else {
-        state = state.copyWith(days: [1, 3, 5], isConfigured: isConfigured);
       }
     } catch (e) {
-      // Handle or log error
+      debugPrint('Error loading schedule from local: $e');
+    }
+  }
+
+  Future<void> _fetchFromSupabase(String userId) async {
+    try {
+      // Get player_id first
+      final playerRes = await _supabase
+          .from('players')
+          .select('id')
+          .eq('user_id', userId)
+          .single();
+      
+      final playerId = playerRes['id'];
+
+      final response = await _supabase
+          .from('workout_schedules')
+          .select()
+          .eq('player_id', playerId)
+          .maybeSingle();
+
+      if (response != null) {
+        final List<dynamic> daysRaw = response['days_of_week'];
+        final List<int> days = daysRaw.map((d) => d as int).toList()..sort();
+        final bool isConfigured = response['is_configured'];
+
+        state = state.copyWith(days: days, isConfigured: isConfigured);
+        
+        // Update local cache
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.setStringList('$_scheduleKeyPrefix$userId', days.map((d) => d.toString()).toList());
+        await prefs.setBool('$_configuredKeyPrefix$userId', isConfigured);
+      }
+    } catch (e) {
+      debugPrint('Error fetching schedule from Supabase: $e');
     }
   }
 
@@ -62,28 +106,46 @@ class ScheduleNotifier extends StateNotifier<ScheduleState> {
     }
     
     state = state.copyWith(days: newDays);
-    _saveState();
+    // Note: We don't sync on every toggle to avoid noise, 
+    // we sync when confirmSchedule is called or when the user navigates away.
   }
 
   Future<void> confirmSchedule() async {
     state = state.copyWith(isConfigured: true);
     if (_currentUserId != null) {
       final prefs = await SharedPreferences.getInstance();
-      await prefs.setBool('${_configuredKeyPrefix}$_currentUserId', true);
-      _saveState();
+      await prefs.setBool('$_configuredKeyPrefix$_currentUserId', true);
+      await _syncToSupabase();
     }
   }
 
-  Future<void> _saveState() async {
+  Future<void> _syncToSupabase() async {
     if (_currentUserId == null) return;
+    
     try {
+      final playerRes = await _supabase
+          .from('players')
+          .select('id')
+          .eq('user_id', _currentUserId!)
+          .single();
+      
+      final playerId = playerRes['id'];
+
+      await _supabase.from('workout_schedules').upsert({
+        'player_id': playerId,
+        'days_of_week': state.days,
+        'is_configured': state.isConfigured,
+        'updated_at': DateTime.now().toIso8601String(),
+      });
+      
+      // Also save locally
       final prefs = await SharedPreferences.getInstance();
       await prefs.setStringList(
-        '${_scheduleKeyPrefix}$_currentUserId', 
+        '$_scheduleKeyPrefix$_currentUserId', 
         state.days.map((d) => d.toString()).toList(),
       );
     } catch (e) {
-      // Handle save error
+      debugPrint('Error syncing schedule to Supabase: $e');
     }
   }
 }

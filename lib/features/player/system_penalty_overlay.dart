@@ -100,7 +100,7 @@ class _SystemPenaltyOverlayState extends State<SystemPenaltyOverlay>
                     ),
                     const SizedBox(height: 24),
                     Text(
-                      'A scheduled workout day was missed. The System does not tolerate weakness.',
+                      'Scheduled protocol breached. The System does not tolerate weakness.',
                       style: ShadowTextTheme.body(16, color: ShadowColors.textPrimary),
                       textAlign: TextAlign.center,
                     ),
@@ -121,7 +121,7 @@ class _SystemPenaltyOverlayState extends State<SystemPenaltyOverlay>
                           foregroundColor: ShadowColors.textPrimary,
                           padding: const EdgeInsets.symmetric(vertical: 16),
                         ),
-                        child: const Text('I WILL GROW STRONGER'),
+                        child: const Text('I WILL MAINTAIN THE CYCLE'),
                       ),
                     ),
                   ],

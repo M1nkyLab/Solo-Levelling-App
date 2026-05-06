@@ -1,129 +1,93 @@
 import 'dart:async';
 import 'package:flutter/foundation.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:solo_levelling_app/features/player/player.dart';
 import 'package:solo_levelling_app/core/models/api_response.dart';
-import 'package:solo_levelling_app/core/logic/system_logic.dart';
-import 'package:solo_levelling_app/features/player/player_rank.dart';
 
 /// PlayerService
 /// 
-/// Production-ready service for managing player state and interactions.
-/// Implements "endpoint" patterns from the api-endpoint-builder skill.
+/// System service for managing player state via Supabase.
 class PlayerService {
-  /// @route GET /api/player/:id
-  /// @desc Fetch player profile and stats
-  /// @access Private (authenticated)
-  ///
-  /// @returns {200} Player data fetched successfully
-  /// @returns {404} Player not found
-  /// @returns {500} Server error
+  final _supabase = Supabase.instance.client;
+
+  /// Fetch player profile from Supabase
   Future<ApiResponse<Player>> getPlayerProfile(String userId) async {
     try {
-      // 1. Validation
-      if (userId.isEmpty) {
-        return ApiResponse.error('Invalid user ID provided');
-      }
+      final response = await _supabase
+          .from('players')
+          .select()
+          .eq('user_id', userId)
+          .single();
 
-      // 2. Fetch data (Mocking for now as DB might not be set up)
-      // Simulating network delay
-      await Future.delayed(const Duration(milliseconds: 300));
-
-      // Mock data for demonstration
-      final player = Player(
-        level: 12,
-        currentExp: 150,
-        maxExp: 600,
-        currentHp: 160,
-        maxHp: 160,
-        strength: 18,
-        agility: 14,
-        vitality: 12,
-        intelligence: 10,
-        sense: 11,
-        availableStatPoints: 0,
-        rank: PlayerRank.D,
-      );
-
+      final player = Player.fromJson(response);
       return ApiResponse.success(player);
 
     } catch (e) {
-      return ApiResponse.error('Internal server error: ${e.toString()}');
+      debugPrint('System Error fetching player profile: $e');
+      return ApiResponse.error('Failed to synchronize with the System: ${e.toString()}');
     }
   }
 
-  /// @route POST /api/player/xp
-  /// @desc Add XP to player and handle potential level ups
-  /// @access Private (authenticated)
-  ///
-  /// @body {int} amount - Amount of XP to add (required, must be > 0)
-  ///
-  /// @returns {200} XP added successfully
-  /// @returns {400} Invalid XP amount
-  /// @returns {500} Server error
-  Future<ApiResponse<Player>> addExperience(Player currentPlayer, int amount) async {
+  /// Add XP to player via Supabase RPC (Server-side level up logic)
+  Future<ApiResponse<Player>> addExperience(String playerId, int amount) async {
     try {
-      // 1. Validation (skill principles: Always validate before processing)
       if (amount <= 0) {
-        return ApiResponse.error(
-          'Invalid XP amount', 
-          details: {'field': 'amount', 'reason': 'must be greater than 0'}
-        );
+        return ApiResponse.error('Invalid essence amount');
       }
 
-      // 2. Business Logic (skill principles: Implement business logic)
-      int newExp = currentPlayer.currentExp + amount;
-      int newLevel = currentPlayer.level;
-      int newMaxXp = currentPlayer.maxExp;
-      int newMaxHp = currentPlayer.maxHp;
-      int newCurrentHp = currentPlayer.currentHp;
-
-      while (newExp >= newMaxXp) {
-        newExp -= newMaxXp;
-        newLevel++;
-        newMaxXp = SystemLogic.xpToNextLevel(newLevel);
-        newMaxHp = SystemLogic.calculateMaxHp(vitality: newLevel);
-        newCurrentHp = newMaxHp; // Fully heal on level up
-      }
-
-      final updatedPlayer = currentPlayer.copyWith(
-        level: newLevel,
-        currentExp: newExp,
-        maxExp: newMaxXp,
-        currentHp: newCurrentHp,
-        maxHp: newMaxHp,
+      // Call the PL/pgSQL function we defined in the schema
+      final response = await _supabase.rpc(
+        'add_player_xp',
+        params: {
+          'p_id': playerId,
+          'xp_amount': amount,
+        },
       );
 
-      return ApiResponse.success(updatedPlayer);
+      // RPC returns a list of rows, we want the first one
+      if (response is List && response.isNotEmpty) {
+        final player = Player.fromJson(response.first);
+        return ApiResponse.success(player);
+      } else if (response is Map<String, dynamic>) {
+        final player = Player.fromJson(response);
+        return ApiResponse.success(player);
+      }
+
+      return ApiResponse.error('System failed to process experience.');
 
     } catch (e) {
-      // skill principles: Handle errors gracefully, don't leak details in production
-      debugPrint('XP Update Error: $e');
-      return ApiResponse.error('Failed to update experience. Please try again.');
+      debugPrint('XP Synchronization Error: $e');
+      return ApiResponse.error('Connection to the System lost.');
     }
   }
 
-  /// @route POST /api/player/penalty
-  /// @desc Apply failure penalty to player
-  /// @access System Only
-  ///
-  /// @returns {200} Penalty applied
+  /// Apply failure penalty to player in Supabase
   Future<ApiResponse<Player>> applyPenalty(Player currentPlayer) async {
     try {
-      // ── Penalty logic: Loss of 30% Max HP and 20% of current EXP ──
       final hpLoss = (currentPlayer.maxHp * 0.3).round();
       final xpLoss = (currentPlayer.currentExp * 0.2).round();
 
-      final newHp = (currentPlayer.currentHp - hpLoss).clamp(1, currentPlayer.maxHp);
+      final newHp = (currentPlayer.currentHp - hpLoss).clamp(0, currentPlayer.maxHp);
       final newXp = (currentPlayer.currentExp - xpLoss).clamp(0, currentPlayer.maxExp);
 
-      final updatedPlayer = currentPlayer.copyWith(
-        currentHp: newHp,
-        currentExp: newXp,
-      );
+      final response = await _supabase
+          .from('players')
+          .update({
+            'current_hp': newHp,
+            'current_exp': newXp,
+            'trial_status': 'penalty',
+            'last_penalty_check': DateTime.now().toIso8601String(),
+          })
+          .eq('id', currentPlayer.id)
+          .select()
+          .single();
 
+      final updatedPlayer = Player.fromJson(response);
       return ApiResponse.success(updatedPlayer);
     } catch (e) {
+      debugPrint('Penalty Application Error: $e');
       return ApiResponse.error('System error applying penalty');
     }
   }
 }
+

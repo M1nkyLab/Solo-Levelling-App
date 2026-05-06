@@ -1,8 +1,10 @@
 import 'player_rank.dart';
 
-enum TrialStatus { idle, active, failed }
+enum TrialStatus { idle, active, failed, penalty }
 
 class Player {
+  final String id;
+  final String userId;
   final int level;
   final PlayerRank rank;
   final int currentExp;
@@ -19,10 +21,13 @@ class Player {
   final int availableStatPoints;
 
   final TrialStatus trialStatus;
-  final bool hasFailedTrial;
+  final bool isDead;
   final DateTime? lastPenaltyCheck;
+  final DateTime? lastWorkoutDate;
 
   Player({
+    required this.id,
+    required this.userId,
     this.level = 1,
     this.rank = PlayerRank.E,
     this.currentExp = 0,
@@ -36,13 +41,16 @@ class Player {
     this.sense = 10,
     this.availableStatPoints = 0,
     this.trialStatus = TrialStatus.idle,
-    this.hasFailedTrial = false,
+    this.isDead = false,
     this.lastPenaltyCheck,
+    this.lastWorkoutDate,
   });
 
   bool get isTrialAvailable => currentExp >= maxExp;
 
   Player copyWith({
+    String? id,
+    String? userId,
     int? level,
     PlayerRank? rank,
     int? currentExp,
@@ -56,10 +64,13 @@ class Player {
     int? sense,
     int? availableStatPoints,
     TrialStatus? trialStatus,
-    bool? hasFailedTrial,
+    bool? isDead,
     DateTime? lastPenaltyCheck,
+    DateTime? lastWorkoutDate,
   }) {
     return Player(
+      id: id ?? this.id,
+      userId: userId ?? this.userId,
       level: level ?? this.level,
       rank: rank ?? this.rank,
       currentExp: currentExp ?? this.currentExp,
@@ -73,50 +84,66 @@ class Player {
       sense: sense ?? this.sense,
       availableStatPoints: availableStatPoints ?? this.availableStatPoints,
       trialStatus: trialStatus ?? this.trialStatus,
-      hasFailedTrial: hasFailedTrial ?? this.hasFailedTrial,
+      isDead: isDead ?? this.isDead,
       lastPenaltyCheck: lastPenaltyCheck ?? this.lastPenaltyCheck,
+      lastWorkoutDate: lastWorkoutDate ?? this.lastWorkoutDate,
     );
   }
 
   Map<String, dynamic> toJson() {
     return {
+      'id': id,
+      'user_id': userId,
       'level': level,
-      'rank': rank.index,
-      'currentExp': currentExp,
-      'maxExp': maxExp,
-      'currentHp': currentHp,
-      'maxHp': maxHp,
+      'rank': rank.name,
+      'current_exp': currentExp,
+      'max_exp': maxExp,
+      'current_hp': currentHp,
+      'max_hp': maxHp,
       'strength': strength,
       'agility': agility,
       'vitality': vitality,
       'intelligence': intelligence,
       'sense': sense,
-      'availableStatPoints': availableStatPoints,
-      'trialStatus': trialStatus.index,
-      'hasFailedTrial': hasFailedTrial,
-      'lastPenaltyCheck': lastPenaltyCheck?.toIso8601String(),
+      'available_stat_points': availableStatPoints,
+      'trial_status': trialStatus.name,
+      'is_dead': isDead,
+      'last_penalty_check': lastPenaltyCheck?.toIso8601String(),
+      'last_workout_date': lastWorkoutDate?.toIso8601String(),
     };
   }
 
   factory Player.fromJson(Map<String, dynamic> json) {
     return Player(
+      id: json['id'],
+      userId: json['user_id'],
       level: json['level'] ?? 1,
-      rank: PlayerRank.values[json['rank'] ?? 0],
-      currentExp: json['currentExp'] ?? 0,
-      maxExp: json['maxExp'] ?? 100,
-      currentHp: json['currentHp'] ?? 100,
-      maxHp: json['maxHp'] ?? 100,
+      rank: PlayerRank.values.firstWhere(
+        (e) => e.name == (json['rank'] ?? 'E'),
+        orElse: () => PlayerRank.E,
+      ),
+      currentExp: json['current_exp'] ?? 0,
+      maxExp: json['max_exp'] ?? 100,
+      currentHp: json['current_hp'] ?? 100,
+      maxHp: json['max_hp'] ?? 100,
       strength: json['strength'] ?? 10,
       agility: json['agility'] ?? 10,
       vitality: json['vitality'] ?? 10,
       intelligence: json['intelligence'] ?? 10,
       sense: json['sense'] ?? 10,
-      availableStatPoints: json['availableStatPoints'] ?? 0,
-      trialStatus: TrialStatus.values[json['trialStatus'] ?? 0],
-      hasFailedTrial: json['hasFailedTrial'] ?? false,
-      lastPenaltyCheck: json['lastPenaltyCheck'] != null
-          ? DateTime.parse(json['lastPenaltyCheck'])
+      availableStatPoints: json['available_stat_points'] ?? 0,
+      trialStatus: TrialStatus.values.firstWhere(
+        (e) => e.name == (json['trial_status'] ?? 'idle'),
+        orElse: () => TrialStatus.idle,
+      ),
+      isDead: json['is_dead'] ?? false,
+      lastPenaltyCheck: json['last_penalty_check'] != null
+          ? DateTime.parse(json['last_penalty_check'])
+          : null,
+      lastWorkoutDate: json['last_workout_date'] != null
+          ? DateTime.parse(json['last_workout_date'])
           : null,
     );
   }
 }
+

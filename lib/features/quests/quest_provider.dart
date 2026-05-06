@@ -1,82 +1,26 @@
-import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import 'package:solo_levelling_app/features/quests/daily_quest.dart';
-import 'package:solo_levelling_app/features/player/player_rank.dart';
 import 'package:solo_levelling_app/features/player/player_provider.dart';
+import 'package:solo_levelling_app/features/quests/quest_service.dart';
 
 class QuestNotifier extends Notifier<List<DailyQuest>> {
-  final _supabase = Supabase.instance.client;
+  final QuestService _questService = QuestService();
   String? _userId;
 
   @override
   List<DailyQuest> build() {
-    // Initial quests (fallback while loading)
-    return [
-      DailyQuest(id: 'pushups', title: 'Push-ups', baseReps: 100, targetDayOfWeek: DateTime.now().weekday),
-      DailyQuest(id: 'situps', title: 'Sit-ups', baseReps: 100, targetDayOfWeek: DateTime.now().weekday),
-      DailyQuest(id: 'squats', title: 'Squats', baseReps: 100, targetDayOfWeek: DateTime.now().weekday),
-      DailyQuest(id: 'run', title: 'Running', baseReps: 30, targetDayOfWeek: DateTime.now().weekday),
-    ];
+    // Initial empty state
+    return [];
   }
 
   Future<void> fetchQuests(String userId) async {
     _userId = userId;
-    final now = DateTime.now();
-    final today = "${now.year}-${now.month}-${now.day}";
-
     try {
-      // 1. Get the player record first to get the correct player_id
-      final playerResponse = await _supabase
-          .from('players')
-          .select('id')
-          .eq('user_id', userId)
-          .single();
-      
-      final String playerId = playerResponse['id'];
-
-      // 2. Fetch today's quests
-      final response = await _supabase
-          .from('daily_quests')
-          .select()
-          .eq('player_id', playerId)
-          .eq('date', today);
-
-      if (response.isEmpty) {
-        // 3. If no quests for today, initialize them
-        await _initializeDailyQuests(playerId, today);
-      } else {
-        // 4. Map the DB response to our DailyQuest model
-        state = response.map<DailyQuest>((q) {
-          return DailyQuest(
-            id: q['quest_id'],
-            title: q['title'],
-            baseReps: 100, // You can make this dynamic based on level if you want
-            currentReps: q['current_reps'],
-            isCompleted: q['is_completed'],
-            targetDayOfWeek: now.weekday,
-          );
-        }).toList();
-      }
+      final quests = await _questService.getDailyQuests(userId);
+      state = quests;
     } catch (e) {
       debugPrint('Error fetching quests: $e');
-    }
-  }
-
-  Future<void> _initializeDailyQuests(String playerId, String date) async {
-    final questsToCreate = [
-      {'player_id': playerId, 'quest_id': 'pushups', 'title': 'Push-ups', 'date': date},
-      {'player_id': playerId, 'quest_id': 'situps', 'title': 'Sit-ups', 'date': date},
-      {'player_id': playerId, 'quest_id': 'squats', 'title': 'Squats', 'date': date},
-      {'player_id': playerId, 'quest_id': 'run', 'title': 'Running', 'date': date},
-    ];
-
-    try {
-      await _supabase.from('daily_quests').insert(questsToCreate);
-      await fetchQuests(_userId!); // Re-fetch after insert
-    } catch (e) {
-      debugPrint('Error initializing quests: $e');
     }
   }
 
@@ -86,42 +30,48 @@ class QuestNotifier extends Notifier<List<DailyQuest>> {
     final player = ref.read(playerProvider);
     final level = player.level;
 
-    final quest = state.firstWhere((q) => q.id == id);
+    final questIndex = state.indexWhere((q) => q.id == id);
+    if (questIndex == -1) return;
+
+    final quest = state[questIndex];
     final target = quest.getActualReps(level);
     final newReps = (quest.currentReps + amount).clamp(0, target);
     final isCompleted = newReps >= target;
 
     // Local update for instant UI feedback
-    state = [
-      for (final q in state)
-        if (q.id == id)
-          q.copyWith(currentReps: newReps, isCompleted: isCompleted)
-        else
-          q,
-    ];
+    final newState = [...state];
+    newState[questIndex] = quest.copyWith(currentReps: newReps, isCompleted: isCompleted);
+    state = newState;
 
     // Remote update to Supabase
     try {
-      final now = DateTime.now();
-      final today = "${now.year}-${now.month}-${now.day}";
+      await _questService.updateQuestProgress(_userId!, id, newReps, isCompleted);
       
-      await _supabase
-          .from('daily_quests')
-          .update({'current_reps': newReps, 'is_completed': isCompleted})
-          .eq('quest_id', id)
-          .eq('date', today);
-          
-      _checkAllDone();
+      if (isCompleted) {
+        _checkAllDone();
+      }
     } catch (e) {
-      debugPrint('Error updating reps: $e');
+      debugPrint('Error updating reps in Supabase: $e');
     }
   }
 
-  Future<void> _checkAllDone() async {
+  void resetFailedQuests() {
+    state = state.map((q) => q.copyWith(currentReps: 0, isCompleted: false)).toList();
+    // Note: We don't sync this to Supabase immediately as the penalty
+    // already updated the DB state. This is just for local UI reset.
+  }
+
+  void _checkAllDone() async {
     final allDone = state.isNotEmpty && state.every((q) => q.isCompleted);
     if (allDone) {
-      // Add logic here to reward EXP/HP via the PlayerProvider
-      // similar to the original logic but potentially syncing with Supabase
+      final player = ref.read(playerProvider);
+      // Reward logic: Level * 25 XP
+      final rewardXp = player.level * 25;
+      
+      // We can use playerProvider to add XP, which is now synced with Supabase
+      ref.read(playerProvider.notifier).addXp(rewardXp);
+      
+      debugPrint('DAILY QUEST COMPLETE: Reward $rewardXp XP');
     }
   }
 }

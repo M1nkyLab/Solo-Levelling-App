@@ -9,7 +9,7 @@
 Solo Leveling Fitness is a gamified fitness application that transforms your real-world physical effort into digital progression. Inspired by the *Solo Leveling* Shadow Monarch aesthetics, it replaces boring spreadsheets with a sleek, immersive RPG "System" interface.
 
 ---
-
+  
 ## ⚔️ Core Features
 
 ### 🖥️ The System UI

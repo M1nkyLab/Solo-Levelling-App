@@ -9,7 +9,7 @@ class ShadowColors {
 
   // Backgrounds
   static const Color obsidian = Color(0xFF000000);       // True OLED black
-  static const Color voidDark  = Color(0xFF0A0A0A);      // Near-black canvas
+  static const Color voidDark  = Color(0xFF0F0A1A);      // Midnight Void background
   static const Color surface   = Color(0xFF111118);      // Card / surface base
   static const Color surfaceAlt= Color(0xFF1A1A26);      // Elevated card layer
 
@@ -75,28 +75,31 @@ class ShadowTextTheme {
   );
 
   // Orbitron – sharp, aggressive sans-serif for headings
-  static TextStyle headline(double size, {Color? color, FontWeight weight = FontWeight.bold}) =>
+  static TextStyle headline(double size, {Color? color, FontWeight weight = FontWeight.bold, double? letterSpacing}) =>
       _orbitronBase.copyWith(
         fontSize: size,
         fontWeight: weight,
         color: color,
+        letterSpacing: letterSpacing,
       );
 
   // Roboto Mono – clean monospace for stats & numbers
-  static TextStyle mono(double size, {Color? color, FontWeight weight = FontWeight.normal}) =>
+  static TextStyle mono(double size, {Color? color, FontWeight weight = FontWeight.normal, double? letterSpacing}) =>
       _robotoMonoBase.copyWith(
         fontSize: size,
         fontWeight: weight,
         color: color,
+        letterSpacing: letterSpacing,
       );
 
   // Rajdhani – body text, readable but slightly techy
-  static TextStyle body(double size, {Color? color, FontWeight? weight, bool italic = false}) =>
+  static TextStyle body(double size, {Color? color, FontWeight? weight, bool italic = false, double? letterSpacing}) =>
       _rajdhaniBase.copyWith(
         fontSize: size,
         color: color,
         fontWeight: weight,
         fontStyle: italic ? FontStyle.italic : FontStyle.normal,
+        letterSpacing: letterSpacing,
       );
 }
 

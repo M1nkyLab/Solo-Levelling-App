@@ -5,7 +5,7 @@ import 'package:solo_levelling_app/core/logic/system_logic.dart';
 import 'package:solo_levelling_app/core/theme/app_theme.dart';
 import '../../core/widgets/smoky_progress_bar.dart';
 
-// ─────────────────────────────────────────────────────────────────────────────
+// ─────────────────────────────────────────────
 //  PlayerStatusHeader
 //
 //  A self-contained header card that displays:
@@ -143,7 +143,7 @@ class _PlayerStatusHeaderState extends State<PlayerStatusHeader>
 
             // ── EXP bar ───────────────────────────────────────────────────
             _StatSection(
-              label: 'EXP',
+              label: 'XP HARVEST',
               current: widget.currentXp,
               max: widget.maxXp,
               color: ShadowColors.xpGold,
@@ -155,7 +155,7 @@ class _PlayerStatusHeaderState extends State<PlayerStatusHeader>
 
             // ── HP bar ────────────────────────────────────────────────────
             _StatSection(
-              label: 'HP',
+              label: 'VITALITY (HP)',
               current: widget.currentHp,
               max: widget.maxHp,
               color: ShadowColors.hpRed,

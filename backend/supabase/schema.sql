@@ -62,7 +62,40 @@ CREATE TABLE daily_quests (
 CREATE INDEX idx_daily_quests_date ON daily_quests(date);
 CREATE INDEX idx_daily_quests_player_id ON daily_quests(player_id);
 
+-- Workout Schedules table: Stores which days of the week a user has selected
+CREATE TABLE workout_schedules (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    player_id UUID REFERENCES players(id) ON DELETE CASCADE,
+    days_of_week INTEGER[] NOT NULL, -- 1 = Monday, 7 = Sunday
+    is_configured BOOLEAN DEFAULT FALSE NOT NULL,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    UNIQUE(player_id)
+);
+
 -- ── FUNCTIONS & TRIGGERS ──────────────────────────────────────────────────
+
+-- Function to handle new user creation
+CREATE OR REPLACE FUNCTION public.handle_new_user()
+RETURNS TRIGGER AS $$
+DECLARE
+    new_player_id UUID;
+BEGIN
+    INSERT INTO public.players (user_id, level, rank, current_hp, max_hp, strength, agility, vitality, intelligence, sense)
+    VALUES (NEW.id, 1, 'E', 100, 100, 10, 10, 10, 10, 10)
+    RETURNING id INTO new_player_id;
+
+    -- Initialize default schedule (Mon, Wed, Fri)
+    INSERT INTO public.workout_schedules (player_id, days_of_week, is_configured)
+    VALUES (new_player_id, ARRAY[1, 3, 5], FALSE);
+
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- Trigger to create player on signup
+CREATE TRIGGER on_auth_user_created
+    AFTER INSERT ON auth.users
+    FOR EACH ROW EXECUTE FUNCTION public.handle_new_user();
 
 -- Trigger to update updated_at
 CREATE OR REPLACE FUNCTION update_updated_at_column()
@@ -155,6 +188,17 @@ CREATE POLICY "Players can update their own quests"
     ON daily_quests FOR UPDATE
     USING (player_id IN (SELECT id FROM players WHERE user_id = auth.uid()));
 
+-- RLS for workout_schedules
+ALTER TABLE workout_schedules ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Players can view their own schedule"
+    ON workout_schedules FOR SELECT
+    USING (player_id IN (SELECT id FROM players WHERE user_id = auth.uid()));
+
+CREATE POLICY "Players can update their own schedule"
+    ON workout_schedules FOR UPDATE
+    USING (player_id IN (SELECT id FROM players WHERE user_id = auth.uid()));
+
 -- RLS for Quest History
 ALTER TABLE quest_history ENABLE ROW LEVEL SECURITY;
 
@@ -171,43 +215,4 @@ CREATE POLICY "Players can view their own notifications"
 
 CREATE POLICY "Players can update their own notifications"
     ON system_notifications FOR UPDATE
-    USING (player_id IN (SELECT id FROM players WHERE user_id = auth.uid()));
-   ELSIF new_lvl >= 11 THEN p_rec.rank := 'D';
-        ELSE p_rec.rank := 'E';
-        END IF;
-
-        -- Heal on level up
-        p_rec.current_hp := p_rec.max_hp;
-    END LOOP;
-
-    UPDATE players 
-    SET current_exp = new_xp,
-        level = new_lvl,
-        max_exp = new_max_xp,
-        rank = p_rec.rank,
-        current_hp = p_rec.current_hp,
-        available_stat_points = p_rec.available_stat_points
-    WHERE id = p_id
-    RETURNING *;
-END;
-$$ LANGUAGE plpgsql;
-
--- ── RLS POLICIES ──────────────────────────────────────────────────────────
-ALTER TABLE players ENABLE ROW LEVEL SECURITY;
-ALTER TABLE daily_quests ENABLE ROW LEVEL SECURITY;
-
-CREATE POLICY "Players can view their own profile"
-    ON players FOR SELECT
-    USING (auth.uid() = user_id);
-
-CREATE POLICY "Players can update their own profile"
-    ON players FOR UPDATE
-    USING (auth.uid() = user_id);
-
-CREATE POLICY "Players can view their own quests"
-    ON daily_quests FOR SELECT
-    USING (player_id IN (SELECT id FROM players WHERE user_id = auth.uid()));
-
-CREATE POLICY "Players can update their own quests"
-    ON daily_quests FOR UPDATE
     USING (player_id IN (SELECT id FROM players WHERE user_id = auth.uid()));

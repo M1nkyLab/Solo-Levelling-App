@@ -96,9 +96,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 
                   // Title
                   Text(
-                    'THE SYSTEM',
-                    style: ShadowTextTheme.headline(28, weight: FontWeight.w900).copyWith(
-                      letterSpacing: 4,
+                    'SYSTEM ENTRY PROTOCOL',
+                    style: ShadowTextTheme.headline(24, weight: FontWeight.w900).copyWith(
+                      letterSpacing: 2,
                       color: ShadowColors.amethystLight,
                     ),
                   ),
@@ -114,7 +114,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                     controller: _emailController,
                     keyboardType: TextInputType.emailAddress,
                     decoration: const InputDecoration(
-                      labelText: 'SYSTEM EMAIL',
+                      labelText: 'CREDENTIALS EMAIL (ID)',
                       prefixIcon: Icon(Icons.email_outlined),
                     ),
                     style: ShadowTextTheme.mono(14),
@@ -126,7 +126,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                     controller: _passwordController,
                     obscureText: !_showPassword,
                     decoration: InputDecoration(
-                      labelText: 'ACCESS CODE',
+                      labelText: 'PASSWORD',
                       prefixIcon: const Icon(Icons.lock_outline),
                       suffixIcon: IconButton(
                         icon: Icon(
@@ -148,7 +148,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                       onPressed: authState.isLoading ? null : _handleLogin,
                       child: authState.isLoading
                           ? const CircularProgressIndicator(strokeWidth: 2)
-                          : const Text('INITIALIZE ACCESS'),
+                          : const Text('GRANT ACCESS'),
                     ),
                   ),
                   const SizedBox(height: 24),
@@ -161,7 +161,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                       );
                     },
                     child: Text(
-                      'CREATE NEW HUNTER PROFILE',
+                      'INITIALIZE HUNTER PROFILE',
                       style: ShadowTextTheme.mono(12, color: ShadowColors.amethystLight),
                     ),
                   ),

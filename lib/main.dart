@@ -9,6 +9,8 @@ import 'package:solo_levelling_app/features/auth/login_screen.dart';
 import 'package:solo_levelling_app/features/auth/auth_provider.dart';
 import 'package:solo_levelling_app/features/quests/schedule_provider.dart';
 import 'package:solo_levelling_app/features/quests/schedule_selection_screen.dart';
+import 'package:solo_levelling_app/features/player/player_provider.dart';
+import 'package:solo_levelling_app/features/quests/quest_provider.dart';
 
 void main() async {
   final binding = WidgetsFlutterBinding.ensureInitialized();
@@ -53,8 +55,10 @@ class SoloLevellingApp extends ConsumerWidget {
       if (next.isAuthenticated && next.user != null) {
         ref.read(scheduleProvider.notifier).loadForUser(next.user!.id);
         ref.read(questProvider.notifier).fetchQuests(next.user!.id);
+        ref.read(playerProvider.notifier).fetchFromSupabase();
       } else if (!next.isAuthenticated) {
         ref.read(scheduleProvider.notifier).reset();
+        ref.read(playerProvider.notifier).reset();
       }
     });
 

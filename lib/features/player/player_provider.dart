@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:solo_levelling_app/features/player/player.dart';
 import 'package:solo_levelling_app/features/player/player_rank.dart';
 import 'package:solo_levelling_app/features/player/player_service.dart';
@@ -10,26 +11,28 @@ class PlayerNotifier extends StateNotifier<Player> {
   final PlayerService _playerService = PlayerService();
 
   PlayerNotifier() : super(Player(
-    level: 9,
+    id: '',
+    userId: '',
+    level: 1,
     rank: PlayerRank.E,
-    currentExp: 480,
-    maxExp: 480,
-    currentHp: 80,
+    currentExp: 0,
+    maxExp: 100,
+    currentHp: 100,
     maxHp: 100,
-    strength: 15,
-    agility: 12,
+    strength: 10,
+    agility: 10,
     vitality: 10,
     intelligence: 10,
     sense: 10,
-    availableStatPoints: 3,
+    availableStatPoints: 0,
     lastPenaltyCheck: null,
   )) {
-    _loadState();
+    _loadLocalState();
   }
 
   static const String _playerKey = 'player_state';
 
-  Future<void> _loadState() async {
+  Future<void> _loadLocalState() async {
     final prefs = await SharedPreferences.getInstance();
     final jsonString = prefs.getString(_playerKey);
     if (jsonString != null) {
@@ -41,7 +44,7 @@ class PlayerNotifier extends StateNotifier<Player> {
     }
   }
 
-  Future<void> _saveState() async {
+  Future<void> _saveLocalState() async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString(_playerKey, json.encode(state.toJson()));
   }
@@ -49,7 +52,43 @@ class PlayerNotifier extends StateNotifier<Player> {
   @override
   set state(Player value) {
     super.state = value;
-    _saveState();
+    _saveLocalState();
+  }
+
+  /// Synchronize player state from Supabase
+  Future<void> fetchFromSupabase() async {
+    final user = Supabase.instance.client.auth.currentUser;
+    if (user == null) return;
+
+    final response = await _playerService.getPlayerProfile(user.id);
+    if (response.success && response.data != null) {
+      state = response.data!;
+    } else {
+      debugPrint('Error fetching player from Supabase: ${response.error}');
+    }
+  }
+
+  /// Resets the player state to defaults (used on logout)
+  Future<void> reset() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove(_playerKey);
+    state = Player(
+      id: '',
+      userId: '',
+      level: 1,
+      rank: PlayerRank.E,
+      currentExp: 0,
+      maxExp: 100,
+      currentHp: 100,
+      maxHp: 100,
+      strength: 10,
+      agility: 10,
+      vitality: 10,
+      intelligence: 10,
+      sense: 10,
+      availableStatPoints: 0,
+      lastPenaltyCheck: null,
+    );
   }
 
   /// Checks if a penalty should be applied based on missed scheduled days.
@@ -107,11 +146,12 @@ class PlayerNotifier extends StateNotifier<Player> {
       rank: previousRank,
       level: floorLevel,
       currentExp: 0,
-      trialStatus: TrialStatus.failed, // Mark as failed/penalty state
-      hasFailedTrial: true,
+      trialStatus: TrialStatus.penalty, // Mark as penalty state
     );
     
     debugPrint('DEMOTION PROTOCOL: Rank downgraded to ${previousRank.rankLabel}');
+    // Sync with Supabase
+    _playerService.applyPenalty(state);
   }
 
   void completeTrial() {
@@ -125,49 +165,40 @@ class PlayerNotifier extends StateNotifier<Player> {
       maxExp: (state.maxExp * 1.5).toInt(), // Scale difficulty for next rank
       currentHp: (state.trialStatus == TrialStatus.failed) ? 30 : state.maxHp, // Revival: 30 HP
       trialStatus: TrialStatus.idle,
-      hasFailedTrial: false,
     );
   }
 
   void startTrial() {
-    state = state.copyWith(trialStatus: TrialStatus.active, hasFailedTrial: false);
+    state = state.copyWith(trialStatus: TrialStatus.active);
   }
 
   void failTrial() {
-    state = state.copyWith(trialStatus: TrialStatus.failed, hasFailedTrial: true);
+    state = state.copyWith(trialStatus: TrialStatus.failed);
   }
 
   void resetTrial() {
     state = state.copyWith(trialStatus: TrialStatus.idle);
   }
 
-  /// Adds XP by calling the "API endpoint" in PlayerService.
-  /// Demonstrates consistent response handling.
+  /// Adds XP via Supabase.
   Future<void> addXp(int amount) async {
-    final response = await _playerService.addExperience(state, amount);
+    final response = await _playerService.addExperience(state.id, amount);
 
     if (response.success && response.data != null) {
-      // 1. Success path: update state with new data atomically
-      final updatedPlayer = response.data!;
-      
-      // Determine rank based on level (UI specific logic)
-      final newRank = _determineRankFromLevel(updatedPlayer.level);
-      state = updatedPlayer.copyWith(rank: newRank);
+      state = response.data!;
     } else {
-      // 2. Error path: handle error (e.g., log it, or show a notification)
-      // In a real app, you might have an 'errorProvider' or use a SnackBar
-      debugPrint('API Error adding XP: ${response.error}');
+      debugPrint('Error adding XP to Supabase: ${response.error}');
     }
   }
 
-  /// Executes penalty via PlayerService.
+  /// Executes penalty via Supabase.
   Future<void> executePenalty() async {
     final response = await _playerService.applyPenalty(state);
 
     if (response.success && response.data != null) {
       state = response.data!;
     } else {
-      debugPrint('API Error applying penalty: ${response.error}');
+      debugPrint('Error applying penalty to Supabase: ${response.error}');
     }
   }
 
