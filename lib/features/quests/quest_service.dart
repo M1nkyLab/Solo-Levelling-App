@@ -141,8 +141,8 @@ class QuestService {
           )
           .select('quest_id, title, current_reps, is_completed');
       
-      if (response == null || response.isEmpty) {
-        debugPrint('QuestService: Upsert returned null or empty response. Retrying fetch...');
+      if (response.isEmpty) {
+        debugPrint('QuestService: Upsert returned empty response. Retrying fetch...');
         return await _fetchQuestsOnly(playerId, date, weekday);
       }
       

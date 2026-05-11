@@ -254,12 +254,10 @@ class _TrialScreenState extends ConsumerState<TrialScreen> {
                           setState(() => _progress['run'] = (_progress['run']! + 1).clamp(0, _targets['run']!));
                           _checkCompletion();
                         },
-                        onSubtract: () => setState(() => _progress['run'] = (_progress['run']! - 1).clamp(0, _targets['run']!)),
                         onLongAdd: () {
                           setState(() => _progress['run'] = (_progress['run']! + 10).clamp(0, _targets['run']!));
                           _checkCompletion();
                         },
-                        onLongSubtract: () => setState(() => _progress['run'] = (_progress['run']! - 10).clamp(0, _targets['run']!)),
                       ),
                     ],
                   ),
@@ -270,7 +268,7 @@ class _TrialScreenState extends ConsumerState<TrialScreen> {
           ),
 
           if (_isQuestComplete)
-            QuestCompleteOverlay(
+            RankUpOverlay(
               oldRank: _oldRank,
               newRank: _newRank,
               onDismiss: () {

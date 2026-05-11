@@ -6,19 +6,23 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 class ScheduleState {
   final List<int> days;
   final bool isConfigured;
+  final bool isLoading;
 
   ScheduleState({
     required this.days,
     this.isConfigured = false,
+    this.isLoading = false,
   });
 
   ScheduleState copyWith({
     List<int>? days,
     bool? isConfigured,
+    bool? isLoading,
   }) {
     return ScheduleState(
       days: days ?? this.days,
       isConfigured: isConfigured ?? this.isConfigured,
+      isLoading: isLoading ?? this.isLoading,
     );
   }
 }
@@ -33,12 +37,15 @@ class ScheduleNotifier extends StateNotifier<ScheduleState> {
 
   Future<void> loadForUser(String userId) async {
     _currentUserId = userId;
+    state = state.copyWith(isLoading: true);
     
     // 1. Try local cache first
     await _loadFromLocal(userId);
 
     // 2. Fetch from Supabase to sync
     await _fetchFromSupabase(userId);
+
+    state = state.copyWith(isLoading: false);
   }
 
   Future<void> _loadFromLocal(String userId) async {

@@ -143,7 +143,7 @@ class _PlayerStatusHeaderState extends State<PlayerStatusHeader>
 
             // ── EXP bar ───────────────────────────────────────────────────
             _StatSection(
-              label: 'XP HARVEST',
+              label: 'EXP',
               current: widget.currentXp,
               max: widget.maxXp,
               color: ShadowColors.xpGold,
@@ -155,7 +155,7 @@ class _PlayerStatusHeaderState extends State<PlayerStatusHeader>
 
             // ── HP bar ────────────────────────────────────────────────────
             _StatSection(
-              label: 'VITALITY (HP)',
+              label: 'HP',
               current: widget.currentHp,
               max: widget.maxHp,
               color: ShadowColors.hpRed,

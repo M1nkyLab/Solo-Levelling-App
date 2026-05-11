@@ -56,12 +56,8 @@ class PlayerService {
 
       final player = Player.fromJson(response);
       
-      // Also ensure a default schedule exists
-      await _supabase.from('workout_schedules').upsert({
-        'player_id': player.id,
-        'days_of_week': [1, 3, 5],
-        'is_configured': false,
-      });
+      // Removed: Redundant schedule upsert that was resetting is_configured to false.
+      // The database trigger or the manual setup in schedule_provider handles this correctly.
 
       return ApiResponse.success(player);
     } catch (e) {
@@ -77,8 +73,12 @@ class PlayerService {
         return ApiResponse.error('Invalid essence amount');
       }
 
-      // Call the PL/pgSQL function we defined in the schema
-      final response = await _supabase.rpc(
+      debugPrint('PlayerService.addExperience: Calling RPC add_player_xp for $playerId with $amount XP');
+
+      // Execute the server-side level-up function.
+      // The function returns SETOF but uses UPDATE...RETURNING without RETURN QUERY,
+      // so we don't rely on the RPC response data — we always re-fetch after.
+      await _supabase.rpc(
         'add_player_xp',
         params: {
           'p_id': playerId,
@@ -86,16 +86,17 @@ class PlayerService {
         },
       );
 
-      // RPC returns a list of rows, we want the first one
-      if (response is List && response.isNotEmpty) {
-        final player = Player.fromJson(response.first);
-        return ApiResponse.success(player);
-      } else if (response is Map<String, dynamic>) {
-        final player = Player.fromJson(response);
-        return ApiResponse.success(player);
-      }
+      // Always fetch the fresh player state after the RPC executes
+      final fresh = await _supabase
+          .from('players')
+          .select()
+          .eq('id', playerId)
+          .single();
 
-      return ApiResponse.error('System failed to process experience.');
+      debugPrint('PlayerService.addExperience: Fresh state — level=${fresh['level']}, xp=${fresh['current_exp']}/${fresh['max_exp']}');
+
+      final player = Player.fromJson(fresh);
+      return ApiResponse.success(player);
 
     } catch (e) {
       debugPrint('XP Synchronization Error: $e');
@@ -131,5 +132,19 @@ class PlayerService {
       return ApiResponse.error('System error applying penalty');
     }
   }
+
+  /// Update HP directly in Supabase (used for quest-completion HP heal)
+  Future<void> updateHp(String playerId, int newHp) async {
+    try {
+      await _supabase
+          .from('players')
+          .update({'current_hp': newHp})
+          .eq('id', playerId);
+    } catch (e) {
+      debugPrint('PlayerService.updateHp error: $e');
+      rethrow;
+    }
+  }
 }
+
 

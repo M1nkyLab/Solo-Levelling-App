@@ -72,26 +72,6 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  // System Icon / Logo
-                  Container(
-                    width: 100,
-                    height: 100,
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      boxShadow: [
-                        BoxShadow(
-                          color: ShadowColors.amethyst.withValues(alpha: 0.3),
-                          blurRadius: 30,
-                          spreadRadius: 5,
-                        ),
-                      ],
-                    ),
-                    child: const Icon(
-                      Icons.shield_rounded,
-                      size: 60,
-                      color: ShadowColors.amethyst,
-                    ),
-                  ),
                   const SizedBox(height: 32),
 
                   // Title

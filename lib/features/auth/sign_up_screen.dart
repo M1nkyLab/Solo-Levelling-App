@@ -91,6 +91,8 @@ class _SignUpScreenState extends ConsumerState<SignUpScreen> {
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
+                  const SizedBox(height: 32),
+
                   Text(
                     'HUNTER DESIGNATION REGISTRATION',
                     style: ShadowTextTheme.headline(24, weight: FontWeight.w900).copyWith(

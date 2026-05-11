@@ -2,6 +2,7 @@ import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:solo_levelling_app/features/quests/schedule_provider.dart';
+import 'package:solo_levelling_app/features/auth/login_screen.dart';
 import 'package:solo_levelling_app/features/auth/auth_provider.dart';
 import 'package:solo_levelling_app/core/theme/app_theme.dart';
 
@@ -167,13 +168,19 @@ class ProfileScreen extends ConsumerWidget {
       width: double.infinity,
       child: OutlinedButton.icon(
         onPressed: () async {
+          // 1. Trigger Supabase logout
           await ref.read(authProvider.notifier).logout();
+          
+          // 2. Explicitly navigate to LoginScreen and clear entire stack
           if (context.mounted) {
-            Navigator.pop(context); // Close profile screen
+            Navigator.of(context).pushAndRemoveUntil(
+              MaterialPageRoute(builder: (context) => const LoginScreen()),
+              (route) => false,
+            );
           }
         },
         icon: const Icon(Icons.link_off_rounded, size: 18),
-        label: const Text('SEVER CONNECTION'),
+        label: const Text('LOG OUT'),
         style: OutlinedButton.styleFrom(
           foregroundColor: ShadowColors.hpRed,
           side: const BorderSide(color: ShadowColors.hpRed, width: 1.2),

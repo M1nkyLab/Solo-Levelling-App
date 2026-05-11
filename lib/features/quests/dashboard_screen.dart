@@ -4,6 +4,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:solo_levelling_app/features/player/player_provider.dart';
 import 'package:solo_levelling_app/features/player/player.dart';
+import 'package:solo_levelling_app/features/player/player_rank.dart';
 import 'package:solo_levelling_app/features/quests/quest_provider.dart';
 import 'package:solo_levelling_app/features/quests/schedule_provider.dart';
 import 'package:solo_levelling_app/features/quests/daily_quest.dart';
@@ -17,6 +18,7 @@ import 'package:solo_levelling_app/features/player/system_penalty_overlay.dart';
 import 'package:solo_levelling_app/features/trials/trial_screen.dart';
 import 'package:solo_levelling_app/features/player/profile_screen.dart';
 import 'package:solo_levelling_app/features/auth/auth_provider.dart';
+import 'package:solo_levelling_app/features/quests/quest_complete_overlay.dart';
 
 // ─────────────────────────────────────────────
 //  Dashboard Screen
@@ -109,6 +111,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
     final scheduleState = ref.watch(scheduleProvider);
     final selectedDate = ref.watch(selectedDateProvider);
     final isLoading = ref.watch(questLoadingProvider);
+    final questCompletionReward = ref.watch(questCompletionOverlayProvider);
     
     final now = DateTime.now();
     final bool isToday = selectedDate.year == now.year && 
@@ -186,10 +189,6 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
                                   ? _RestDayBanner(date: selectedDate)
                                   : Column(
                                       children: [
-                                        Text(
-                                          isToday ? 'T-MINUS' : 'DAILY PROTOCOL',
-                                          style: ShadowTextTheme.mono(9, color: ShadowColors.textDisabled),
-                                        ),
                                         if (isToday)
                                           const DailyCountdownTimer()
                                         else
@@ -269,7 +268,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
                           children: [
                             Text(
                               isScheduledDay 
-                                ? 'NO PROTOCOLS FOUND'
+                                ? 'NO DAILY QUEST FOR TODAY'
                                 : 'RECOVERY PHASE ACTIVE',
                               textAlign: TextAlign.center,
                               style: ShadowTextTheme.headline(20).copyWith(
@@ -377,6 +376,19 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
             SystemPenaltyOverlay(
               expLost: _penaltyExpLost,
               onDismiss: () => setState(() => _penaltyExpLost = 0),
+            ),
+
+          // Daily quest completion popup — shown BEFORE reward is given
+          if (questCompletionReward != null)
+            Positioned.fill(
+              child: QuestCompleteOverlay(
+                expReward: questCompletionReward,
+                hpHeal: player.rank.hpGainOnCompletion,
+                rank: player.rank,
+                onContinue: () {
+                  ref.read(questProvider.notifier).claimQuestReward();
+                },
+              ),
             ),
         ],
       ),
@@ -546,8 +558,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
                 '👤', // Hunter Emoji
                 style: TextStyle(fontSize: 18),
               ),
-            ),
-          ),
+            ),          ),
         ),
       ],
     );
@@ -621,17 +632,9 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
               _vibrate();
               ref.read(questProvider.notifier).updateReps(quest.id, 1, date: selectedDate);
             } : () {},
-            onSubtract: isToday ? () {
-              _vibrate();
-              ref.read(questProvider.notifier).updateReps(quest.id, -1, date: selectedDate);
-            } : () {},
             onLongAdd: isToday ? () {
               _vibrate();
               ref.read(questProvider.notifier).updateReps(quest.id, 10, date: selectedDate);
-            } : () {},
-            onLongSubtract: isToday ? () {
-              _vibrate();
-              ref.read(questProvider.notifier).updateReps(quest.id, -10, date: selectedDate);
             } : () {},
             accentColor: isToday ? null : ShadowColors.textDisabled.withValues(alpha: 0.5),
           ),
@@ -652,11 +655,6 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
 
   String _weekday(int d) =>
       ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'][d - 1];
-
-  String _month(int m) => [
-        'Jan','Feb','Mar','Apr','May','Jun',
-        'Jul','Aug','Sep','Oct','Nov','Dec'
-      ][m - 1];
 
   Widget _glowOrb({
     required Color color,
@@ -750,6 +748,10 @@ class _CompletionBannerState extends ConsumerState<_CompletionBanner> with Singl
   Widget build(BuildContext context) {
     const accentColor = ShadowColors.success;
     
+    // If today is completed but we're still waiting for the next cycle, show the timer.
+    // Otherwise, if it's an archived/past day, we'll keep the banner but maybe we should 
+    // also simplify it or just show a simpler message.
+    
     return Container(
       width: double.infinity,
       margin: const EdgeInsets.symmetric(horizontal: 16),
@@ -780,95 +782,58 @@ class _CompletionBannerState extends ConsumerState<_CompletionBanner> with Singl
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Row(
-                    children: [
-                      const Icon(Icons.verified_rounded, color: accentColor, size: 20),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: Text(
-                          widget.isToday ? '[SYSTEM ALERT] DAILY QUEST COMPLETED' : '[ARCHIVE] PROTOCOL COMPLETED',
-                          style: ShadowTextTheme.mono(14, color: accentColor, weight: FontWeight.bold).copyWith(
-                            letterSpacing: 1.5,
-                            shadows: [
-                              Shadow(color: accentColor.withValues(alpha: 0.5), blurRadius: 10),
-                            ],
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 16),
-                  Text(
-                    widget.isToday 
-                      ? 'The System has verified your progress. Your physical capabilities have exceeded the previous day\'s limits.'
-                      : 'Records indicate that you successfully completed the assigned protocols for this cycle.',
-                    style: ShadowTextTheme.body(12, color: ShadowColors.textPrimary.withValues(alpha: 0.9)),
-                  ),
-                  const SizedBox(height: 24),
-                  
-                  // Stats / Rewards Row
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                    decoration: BoxDecoration(
-                      color: ShadowColors.surfaceAlt.withValues(alpha: 0.5),
-                      borderRadius: BorderRadius.circular(8),
-                      border: Border.all(color: ShadowColors.glassBorder.withValues(alpha: 0.1)),
-                    ),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  if (widget.isToday && _nextWorkoutIn > Duration.zero) ...[
+                    Row(
                       children: [
-                        _buildStatItem('REWARD', '+${widget.expReward} EXP', ShadowColors.xpGold),
-                        _buildStatItem('STATUS', 'VERIFIED', ShadowColors.success),
+                        AnimatedBuilder(
+                          animation: _pulseCtrl,
+                          builder: (context, child) {
+                            return Container(
+                              width: 8,
+                              height: 8,
+                              decoration: BoxDecoration(
+                                shape: BoxShape.circle,
+                                color: accentColor.withValues(alpha: 0.3 + (0.7 * _pulseCtrl.value)),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: accentColor.withValues(alpha: 0.5 * _pulseCtrl.value),
+                                    blurRadius: 6,
+                                    spreadRadius: 2,
+                                  ),
+                                ],
+                              ),
+                            );
+                          },
+                        ),
+                        const SizedBox(width: 10),
+                        Text(
+                          'NEXT DAILY QUEST INITIALIZING IN:',
+                          style: ShadowTextTheme.mono(10, color: ShadowColors.textSecondary),
+                        ),
                       ],
                     ),
-                  ),
-                  
-                  if (widget.isToday && _nextWorkoutIn > Duration.zero) ...[
-                    const SizedBox(height: 20),
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
-                          children: [
-                            AnimatedBuilder(
-                              animation: _pulseCtrl,
-                              builder: (context, child) {
-                                return Container(
-                                  width: 8,
-                                  height: 8,
-                                  decoration: BoxDecoration(
-                                    shape: BoxShape.circle,
-                                    color: accentColor.withValues(alpha: 0.3 + (0.7 * _pulseCtrl.value)),
-                                    boxShadow: [
-                                      BoxShadow(
-                                        color: accentColor.withValues(alpha: 0.5 * _pulseCtrl.value),
-                                        blurRadius: 6,
-                                        spreadRadius: 2,
-                                      ),
-                                    ],
-                                  ),
-                                );
-                              },
-                            ),
-                            const SizedBox(width: 10),
-                            Text(
-                              'NEXT TRAINING CYCLE INITIALIZING IN:',
-                              style: ShadowTextTheme.mono(10, color: ShadowColors.textSecondary),
-                            ),
+                    const SizedBox(height: 12),
+                    Padding(
+                      padding: const EdgeInsets.only(left: 18),
+                      child: Text(
+                        _formatDuration(_nextWorkoutIn),
+                        style: ShadowTextTheme.mono(24, color: accentColor, weight: FontWeight.bold).copyWith(
+                          letterSpacing: 2,
+                          shadows: [
+                            Shadow(color: accentColor.withValues(alpha: 0.3), blurRadius: 10),
                           ],
                         ),
-                        const SizedBox(height: 8),
-                        Padding(
-                          padding: const EdgeInsets.only(left: 18),
-                          child: Text(
-                            _formatDuration(_nextWorkoutIn),
-                            style: ShadowTextTheme.mono(24, color: accentColor, weight: FontWeight.bold).copyWith(
-                              letterSpacing: 2,
-                              shadows: [
-                                Shadow(color: accentColor.withValues(alpha: 0.3), blurRadius: 10),
-                              ],
-                            ),
-                          ),
+                      ),
+                    ),
+                  ] else ...[
+                    // Fallback for archived days or if timer is somehow zero
+                    Row(
+                      children: [
+                        const Icon(Icons.verified_rounded, color: accentColor, size: 20),
+                        const SizedBox(width: 12),
+                        Text(
+                          'DAILY QUEST COMPLETED',
+                          style: ShadowTextTheme.mono(14, color: accentColor, weight: FontWeight.bold),
                         ),
                       ],
                     ),
@@ -879,17 +844,6 @@ class _CompletionBannerState extends ConsumerState<_CompletionBanner> with Singl
           ],
         ),
       ),
-    );
-  }
-
-  Widget _buildStatItem(String label, String value, Color color) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(label, style: ShadowTextTheme.mono(9, color: ShadowColors.textDisabled)),
-        const SizedBox(height: 2),
-        Text(value, style: ShadowTextTheme.mono(13, color: color, weight: FontWeight.bold)),
-      ],
     );
   }
 }

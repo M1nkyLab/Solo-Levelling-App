@@ -1,8 +1,10 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:solo_levelling_app/features/quests/daily_quest.dart';
+import 'package:solo_levelling_app/features/player/player_rank.dart';
 import 'package:solo_levelling_app/features/player/player_provider.dart';
 import 'package:solo_levelling_app/features/quests/quest_service.dart';
+import 'package:solo_levelling_app/features/quests/schedule_provider.dart';
 
 // NEW: Expose a loading state to the UI
 final questLoadingProvider = StateProvider<bool>((ref) => true);
@@ -50,7 +52,21 @@ class QuestNotifier extends Notifier<List<DailyQuest>> {
       
       var quests = await _questService.getDailyQuests(userId, date: date, localSchedule: effectiveSchedule);
       
-      // ... rest of the method
+      // Guard: discard stale fetches if a newer one started
+      if (fetchId != _lastFetchId || !_mounted) return;
+
+      debugPrint('QuestNotifier: [FETCH $fetchId] Completed. Got ${quests.length} quests.');
+      state = quests;
+    } catch (e, stack) {
+      debugPrint('QuestNotifier: [FETCH $fetchId] Error: $e');
+      debugPrint('QuestNotifier: StackTrace: $stack');
+      // If we had injected instant-arise fallbacks, keep them on error
+    } finally {
+      if (_mounted && fetchId == _lastFetchId) {
+        ref.read(questLoadingProvider.notifier).state = false;
+      }
+    }
+  }
 
   void updateReps(String id, int amount, {DateTime? date}) async {
     if (_userId == null) return;
@@ -63,6 +79,10 @@ class QuestNotifier extends Notifier<List<DailyQuest>> {
 
     final quest = state[questIndex];
     final target = quest.getActualReps(level);
+    
+    // System Mandate: Progress is permanent. No regression allowed.
+    if (amount < 0) return;
+
     final newReps = (quest.currentReps + amount).clamp(0, target);
     final isCompleted = newReps >= target;
 
@@ -73,7 +93,7 @@ class QuestNotifier extends Notifier<List<DailyQuest>> {
 
     // Remote update to Supabase
     try {
-      await _questService.updateQuestProgress(_userId!, id, newReps, isCompleted, date: date);
+      await _questService.updateQuestProgress(_userId!, id, newReps.toInt(), isCompleted, date: date);
       
       if (isCompleted) {
         _checkAllDone();
@@ -89,7 +109,9 @@ class QuestNotifier extends Notifier<List<DailyQuest>> {
 
   final Set<String> _rewardedDates = {};
 
-  void _checkAllDone() async {
+  // Called when all quests are done — only shows the popup.
+  // Actual XP + HP reward is deferred until the user presses "Continue".
+  void _checkAllDone() {
     final quests = state;
     if (quests.isEmpty) return;
 
@@ -98,18 +120,52 @@ class QuestNotifier extends Notifier<List<DailyQuest>> {
       final selectedDate = ref.read(selectedDateProvider);
       final dateKey = "${selectedDate.year}-${selectedDate.month}-${selectedDate.day}";
 
-      // Ensure we only trigger this once per day (session-based for now)
+      // Guard: only trigger once per day
       if (_rewardedDates.contains(dateKey)) return;
-      
       _rewardedDates.add(dateKey);
-      
+
       final player = ref.read(playerProvider);
-      // Reward logic: Level * 25 XP
-      final rewardXp = player.level * 25;
-      
-      await ref.read(playerProvider.notifier).addXp(rewardXp);
-      
-      debugPrint('DAILY QUEST COMPLETE: Reward $rewardXp XP added via SQL schema.');
+
+      // System Reward Scaling: level * base * rank multiplier
+      const int baseEssence = 25;
+      final int rankMultiplier = _getRankMultiplier(player.rank);
+      final int rewardXp = player.level * baseEssence * rankMultiplier;
+
+      // Store pending reward and show popup — do NOT award yet
+      ref.read(_pendingQuestRewardProvider.notifier).state = rewardXp;
+      ref.read(questCompletionOverlayProvider.notifier).state = rewardXp;
+
+      debugPrint('DAILY QUEST: Popup triggered. Pending reward: $rewardXp XP.');
+    }
+  }
+
+  /// Called by the popup "Continue" button to finalize the reward.
+  Future<void> claimQuestReward() async {
+    final pendingXp = ref.read(_pendingQuestRewardProvider);
+    if (pendingXp == null) return;
+
+    // Clear pending reward immediately to prevent double-claim
+    ref.read(_pendingQuestRewardProvider.notifier).state = null;
+    ref.read(questCompletionOverlayProvider.notifier).state = null;
+
+    debugPrint('DAILY QUEST CLAIM: Awarding $pendingXp XP + HP heal...');
+
+    // 1. Award XP (triggers level-up logic in Supabase via add_player_xp RPC)
+    await ref.read(playerProvider.notifier).addXp(pendingXp);
+
+    // 2. Heal HP based on rank (vitality reward for completing the daily protocol)
+    await ref.read(playerProvider.notifier).healOnQuestComplete();
+
+    debugPrint('DAILY QUEST CLAIM: Complete.');
+  }
+
+  int _getRankMultiplier(PlayerRank rank) {
+    switch (rank) {
+      case PlayerRank.S: return 5;
+      case PlayerRank.A: return 4;
+      case PlayerRank.B: return 3;
+      case PlayerRank.C: return 2;
+      default: return 1;
     }
   }
 }
@@ -121,3 +177,10 @@ final questProvider = NotifierProvider<QuestNotifier, List<DailyQuest>>(() {
 final selectedDateProvider = StateProvider<DateTime>((ref) {
   return DateTime.now();
 });
+
+// Signal for the completion popup.
+// Stores the EXP reward amount when triggered, null otherwise.
+final questCompletionOverlayProvider = StateProvider<int?>((ref) => null);
+
+// Internal: stores the pending XP until "Continue" is pressed.
+final _pendingQuestRewardProvider = StateProvider<int?>((ref) => null);

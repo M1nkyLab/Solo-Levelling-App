@@ -189,14 +189,44 @@ class PlayerNotifier extends StateNotifier<Player> {
     state = state.copyWith(trialStatus: TrialStatus.idle);
   }
 
-  /// Adds XP via Supabase.
+  /// Adds XP via Supabase. Resolves player_id from userId if id is empty.
   Future<void> addXp(int amount) async {
-    final response = await _playerService.addExperience(state.id, amount);
+    // If state.id is empty (player not yet fetched from DB), resolve it first
+    String playerId = state.id;
+    if (playerId.isEmpty) {
+      await fetchFromSupabase();
+      playerId = state.id;
+    }
+    if (playerId.isEmpty) {
+      debugPrint('addXp: Cannot award XP — player ID still unknown.');
+      return;
+    }
+
+    final response = await _playerService.addExperience(playerId, amount);
 
     if (response.success && response.data != null) {
       state = response.data!;
     } else {
       debugPrint('Error adding XP to Supabase: ${response.error}');
+    }
+  }
+
+  /// Heals HP after completing the daily quest, based on rank vitality reward.
+  Future<void> healOnQuestComplete() async {
+    final healAmount = state.rank.hpGainOnCompletion;
+    final newHp = (state.currentHp + healAmount).clamp(0, state.maxHp);
+    if (newHp == state.currentHp) return; // already full
+
+    // Optimistic local update
+    state = state.copyWith(currentHp: newHp);
+
+    // Sync to Supabase
+    String playerId = state.id;
+    if (playerId.isEmpty) return;
+    try {
+      await _playerService.updateHp(playerId, newHp);
+    } catch (e) {
+      debugPrint('healOnQuestComplete: Supabase sync failed: $e');
     }
   }
 

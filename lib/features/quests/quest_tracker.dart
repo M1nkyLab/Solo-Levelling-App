@@ -13,9 +13,7 @@ class QuestTracker extends StatelessWidget {
   final bool isDecimal;       // true for run (0.5 km steps)
   final Color? accentColor;    // Optional override for the theme color
   final VoidCallback onAdd;
-  final VoidCallback onSubtract;
   final VoidCallback? onLongAdd;
-  final VoidCallback? onLongSubtract;
 
   const QuestTracker({
     super.key,
@@ -24,9 +22,7 @@ class QuestTracker extends StatelessWidget {
     required this.completed,
     required this.target,
     required this.onAdd,
-    required this.onSubtract,
     this.onLongAdd,
-    this.onLongSubtract,
     this.unit = 'reps',
     this.isDecimal = false,
     this.accentColor,
@@ -111,13 +107,6 @@ class QuestTracker extends StatelessWidget {
                     ),
                   ],
                 ),
-              ),
-              _ControlButton(
-                icon: Icons.remove,
-                onTap: onSubtract,
-                onLongPress: onLongSubtract,
-                enabled: completed > 0,
-                color: ShadowColors.textSecondary,
               ),
               const SizedBox(width: 8),
               _ControlButton(

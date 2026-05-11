@@ -156,6 +156,7 @@ BEGIN
         p_rec.current_hp := p_rec.max_hp;
     END LOOP;
 
+    RETURN QUERY
     UPDATE players 
     SET current_exp = new_xp,
         level = new_lvl,
@@ -180,6 +181,10 @@ CREATE POLICY "Players can update their own profile"
     ON players FOR UPDATE
     USING (auth.uid() = user_id);
 
+CREATE POLICY "Players can insert their own profile"
+    ON players FOR INSERT
+    WITH CHECK (auth.uid() = user_id);
+
 CREATE POLICY "Players can view their own quests"
     ON daily_quests FOR SELECT
     USING (player_id IN (SELECT id FROM players WHERE user_id = auth.uid()));
@@ -202,6 +207,10 @@ CREATE POLICY "Players can view their own schedule"
 CREATE POLICY "Players can update their own schedule"
     ON workout_schedules FOR UPDATE
     USING (player_id IN (SELECT id FROM players WHERE user_id = auth.uid()));
+
+CREATE POLICY "Players can insert their own schedule"
+    ON workout_schedules FOR INSERT
+    WITH CHECK (player_id IN (SELECT id FROM players WHERE user_id = auth.uid()));
 
 -- RLS for Quest History
 ALTER TABLE quest_history ENABLE ROW LEVEL SECURITY;

@@ -69,7 +69,7 @@ class SoloLevellingApp extends ConsumerWidget {
     });
 
     Widget home;
-    if (authState.isLoading) {
+    if (authState.isLoading || (authState.isAuthenticated && scheduleState.isLoading)) {
       home = const SplashScreen();
     } else if (authState.isAuthenticated) {
       if (scheduleState.isConfigured) {
