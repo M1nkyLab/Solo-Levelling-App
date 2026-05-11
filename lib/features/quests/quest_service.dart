@@ -5,9 +5,9 @@ import 'package:solo_levelling_app/features/quests/daily_quest.dart';
 class QuestService {
   final _supabase = Supabase.instance.client;
 
-  Future<List<DailyQuest>> getDailyQuests(String userId) async {
-    final now = DateTime.now();
-    final today = "${now.year}-${now.month}-${now.day}";
+  Future<List<DailyQuest>> getDailyQuests(String userId, {DateTime? date}) async {
+    final targetDate = date ?? DateTime.now();
+    final dateStr = "${targetDate.year}-${targetDate.month}-${targetDate.day}";
 
     try {
       // 1. Get the player record first to get the correct player_id
@@ -19,16 +19,16 @@ class QuestService {
       
       final String playerId = playerResponse['id'];
 
-      // 2. Fetch today's quests
+      // 2. Fetch quests for the target date
       final response = await _supabase
           .from('daily_quests')
           .select()
           .eq('player_id', playerId)
-          .eq('date', today);
+          .eq('date', dateStr);
 
       if (response.isEmpty) {
         // 3. If no quests for today, initialize them
-        return await _initializeDailyQuests(playerId, today, now.weekday);
+        return await _initializeDailyQuests(playerId, dateStr, targetDate.weekday);
       } else {
         // 4. Map the DB response to our DailyQuest model
         return response.map<DailyQuest>((q) {
@@ -38,7 +38,7 @@ class QuestService {
             baseReps: 100, // This is a placeholder, actual reps calculated via SystemLogic
             currentReps: q['current_reps'],
             isCompleted: q['is_completed'],
-            targetDayOfWeek: now.weekday,
+            targetDayOfWeek: targetDate.weekday,
           );
         }).toList();
       }
@@ -78,9 +78,9 @@ class QuestService {
     }
   }
 
-  Future<void> updateQuestProgress(String userId, String questId, int currentReps, bool isCompleted) async {
-    final now = DateTime.now();
-    final today = "${now.year}-${now.month}-${now.day}";
+  Future<void> updateQuestProgress(String userId, String questId, int currentReps, bool isCompleted, {DateTime? date}) async {
+    final targetDate = date ?? DateTime.now();
+    final dateStr = "${targetDate.year}-${targetDate.month}-${targetDate.day}";
 
     try {
       // Get playerId
@@ -100,7 +100,7 @@ class QuestService {
           })
           .eq('player_id', playerId)
           .eq('quest_id', questId)
-          .eq('date', today);
+          .eq('date', dateStr);
     } catch (e) {
       debugPrint('Error updating quest progress in QuestService: $e');
       rethrow;

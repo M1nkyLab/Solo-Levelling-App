@@ -14,17 +14,17 @@ class QuestNotifier extends Notifier<List<DailyQuest>> {
     return [];
   }
 
-  Future<void> fetchQuests(String userId) async {
+  Future<void> fetchQuests(String userId, {DateTime? date}) async {
     _userId = userId;
     try {
-      final quests = await _questService.getDailyQuests(userId);
+      final quests = await _questService.getDailyQuests(userId, date: date);
       state = quests;
     } catch (e) {
       debugPrint('Error fetching quests: $e');
     }
   }
 
-  void updateReps(String id, int amount) async {
+  void updateReps(String id, int amount, {DateTime? date}) async {
     if (_userId == null) return;
     
     final player = ref.read(playerProvider);
@@ -45,7 +45,7 @@ class QuestNotifier extends Notifier<List<DailyQuest>> {
 
     // Remote update to Supabase
     try {
-      await _questService.updateQuestProgress(_userId!, id, newReps, isCompleted);
+      await _questService.updateQuestProgress(_userId!, id, newReps, isCompleted, date: date);
       
       if (isCompleted) {
         _checkAllDone();
@@ -57,8 +57,6 @@ class QuestNotifier extends Notifier<List<DailyQuest>> {
 
   void resetFailedQuests() {
     state = state.map((q) => q.copyWith(currentReps: 0, isCompleted: false)).toList();
-    // Note: We don't sync this to Supabase immediately as the penalty
-    // already updated the DB state. This is just for local UI reset.
   }
 
   void _checkAllDone() async {
@@ -68,7 +66,6 @@ class QuestNotifier extends Notifier<List<DailyQuest>> {
       // Reward logic: Level * 25 XP
       final rewardXp = player.level * 25;
       
-      // We can use playerProvider to add XP, which is now synced with Supabase
       ref.read(playerProvider.notifier).addXp(rewardXp);
       
       debugPrint('DAILY QUEST COMPLETE: Reward $rewardXp XP');
@@ -78,4 +75,8 @@ class QuestNotifier extends Notifier<List<DailyQuest>> {
 
 final questProvider = NotifierProvider<QuestNotifier, List<DailyQuest>>(() {
   return QuestNotifier();
+});
+
+final selectedDateProvider = StateProvider<DateTime>((ref) {
+  return DateTime.now();
 });

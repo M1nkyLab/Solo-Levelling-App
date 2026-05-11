@@ -16,6 +16,7 @@ import 'package:solo_levelling_app/features/trials/trial_failed_card.dart';
 import 'package:solo_levelling_app/features/player/system_penalty_overlay.dart';
 import 'package:solo_levelling_app/features/trials/trial_screen.dart';
 import 'package:solo_levelling_app/features/player/profile_screen.dart';
+import 'package:solo_levelling_app/features/auth/auth_provider.dart';
 
 // ─────────────────────────────────────────────
 //  Dashboard Screen
@@ -87,8 +88,16 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
     final player = ref.watch(playerProvider);
     final quests = ref.watch(questProvider);
     final scheduleState = ref.watch(scheduleProvider);
+    final selectedDate = ref.watch(selectedDateProvider);
+    
+    final now = DateTime.now();
+    final bool isToday = selectedDate.year == now.year && 
+                        selectedDate.month == now.month && 
+                        selectedDate.day == now.day;
+    
+    final bool isScheduledDay = scheduleState.days.contains(selectedDate.weekday);
 
-    final bool showTrialPortal = player.isTrialAvailable && player.trialStatus != TrialStatus.failed;
+    final bool showTrialPortal = isToday && player.isTrialAvailable && player.trialStatus != TrialStatus.failed;
     final bool allDone = quests.isNotEmpty && quests.every((q) => q.isCompleted);
 
     return Scaffold(
@@ -127,28 +136,40 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
                         ),
                       ),
                       
-                      const SizedBox(height: 32),
+                      const SizedBox(height: 24),
+
+                      _buildHorizontalDaySelector(),
+
+                      const SizedBox(height: 24),
 
                       FadeTransition(
                         opacity: _staggeredAnims[1],
                         child: Center(
                           child: (allDone && !showTrialPortal)
-                              ? _CompletionBanner(expReward: player.level * 25)
-                              : Column(
-                                  children: [
-                                    Text(
-                                      'T-MINUS',
-                                      style: ShadowTextTheme.mono(9, color: ShadowColors.textDisabled),
+                              ? _CompletionBanner(expReward: player.level * 25, isToday: isToday)
+                              : (!isScheduledDay)
+                                  ? _RestDayBanner(date: selectedDate)
+                                  : Column(
+                                      children: [
+                                        Text(
+                                          isToday ? 'T-MINUS' : 'DAILY PROTOCOL',
+                                          style: ShadowTextTheme.mono(9, color: ShadowColors.textDisabled),
+                                        ),
+                                        if (isToday)
+                                          const DailyCountdownTimer()
+                                        else
+                                          Text(
+                                            'TRAINING WINDOW ACTIVE',
+                                            style: ShadowTextTheme.mono(16, color: ShadowColors.amethystLight, weight: FontWeight.bold),
+                                          ),
+                                      ],
                                     ),
-                                    const DailyCountdownTimer(),
-                                  ],
-                                ),
                         ),
                       ),
                       
                       const SizedBox(height: 32),
 
-                      if (player.trialStatus == TrialStatus.failed) ...[
+                      if (isToday && player.trialStatus == TrialStatus.failed) ...[
                         Padding(
                           padding: const EdgeInsets.symmetric(horizontal: 16),
                           child: TrialFailedCard(onRetry: _enterTrial),
@@ -156,7 +177,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
                         const SizedBox(height: 24),
                       ],
 
-                      _buildQuestSectionHeader(quests, showTrialPortal, scheduleState.days),
+                      _buildQuestSectionHeader(quests, showTrialPortal, scheduleState.days, selectedDate, isScheduledDay),
                       
                       const SizedBox(height: 16),
                     ],
@@ -170,10 +191,6 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
                       child: TrialPortalCard(onTap: _enterTrial),
                     ),
                   )
-                else if (allDone)
-                  const SliverToBoxAdapter(
-                    child: SizedBox(height: 100), // Spacing when list is gone
-                  )
                 else
                   SliverPadding(
                     padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -182,7 +199,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
                       itemBuilder: (context, index) {
                         return Padding(
                           padding: const EdgeInsets.only(bottom: 12),
-                          child: _buildStaggeredQuestTracker(quests[index], index),
+                          child: _buildStaggeredQuestTracker(quests[index], index, selectedDate, player.level, isToday),
                         );
                       },
                     ),
@@ -199,6 +216,97 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
               onDismiss: () => setState(() => _penaltyExpLost = 0),
             ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildHorizontalDaySelector() {
+    final now = DateTime.now();
+    final selectedDate = ref.watch(selectedDateProvider);
+    final schedule = ref.watch(scheduleProvider).days;
+
+    return SizedBox(
+      height: 70,
+      child: ListView.builder(
+        scrollDirection: Axis.horizontal,
+        padding: const EdgeInsets.symmetric(horizontal: 16),
+        itemCount: 7,
+        itemBuilder: (context, index) {
+          // Show current week: Mon to Sun
+          final monday = now.subtract(Duration(days: now.weekday - 1));
+          final date = monday.add(Duration(days: index));
+          final bool isSelected = date.year == selectedDate.year && 
+                                  date.month == selectedDate.month && 
+                                  date.day == selectedDate.day;
+          final bool isToday = date.year == now.year && 
+                                date.month == now.month && 
+                                date.day == now.day;
+          final bool isScheduled = schedule.contains(date.weekday);
+
+          return GestureDetector(
+            onTap: () {
+              HapticFeedback.lightImpact();
+              ref.read(selectedDateProvider.notifier).state = date;
+              final user = ref.read(authProvider).user;
+              if (user != null) {
+                ref.read(questProvider.notifier).fetchQuests(user.id, date: date);
+              }
+            },
+            child: AnimatedContainer(
+              duration: const Duration(milliseconds: 200),
+              width: 50,
+              margin: const EdgeInsets.only(right: 12),
+              decoration: BoxDecoration(
+                color: isSelected 
+                  ? ShadowColors.amethyst.withValues(alpha: 0.2) 
+                  : ShadowColors.surfaceAlt.withValues(alpha: 0.4),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(
+                  color: isSelected 
+                    ? ShadowColors.amethyst 
+                    : (isToday ? ShadowColors.amethyst.withValues(alpha: 0.3) : Colors.transparent),
+                  width: 1.5,
+                ),
+                boxShadow: isSelected ? [
+                  BoxShadow(
+                    color: ShadowColors.amethyst.withValues(alpha: 0.1),
+                    blurRadius: 8,
+                  )
+                ] : null,
+              ),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Text(
+                    _weekday(date.weekday).toUpperCase(),
+                    style: ShadowTextTheme.mono(9, 
+                      color: isSelected ? ShadowColors.textPrimary : ShadowColors.textDisabled,
+                      weight: isSelected ? FontWeight.bold : FontWeight.normal,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    date.day.toString(),
+                    style: ShadowTextTheme.mono(16, 
+                      color: isSelected ? ShadowColors.amethystLight : ShadowColors.textPrimary,
+                      weight: FontWeight.bold,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  if (isScheduled)
+                    Container(
+                      width: 4,
+                      height: 4,
+                      decoration: const BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: ShadowColors.amethyst,
+                      ),
+                    ),
+                ],
+              ),
+            ),
+          );
+        },
       ),
     );
   }
@@ -278,10 +386,9 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
     );
   }
 
-  Widget _buildQuestSectionHeader(List<DailyQuest> quests, bool isTrial, List<int> scheduledDays) {
-    final today = DateTime.now();
+  Widget _buildQuestSectionHeader(List<DailyQuest> quests, bool isTrial, List<int> scheduledDays, DateTime selectedDate, bool isScheduledDay) {
     final dateStr =
-        '${_weekday(today.weekday)}, ${today.day} ${_month(today.month)}';
+        '${_weekday(selectedDate.weekday)}, ${selectedDate.day} ${_month(selectedDate.month)}';
 
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -310,9 +417,9 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
                 const SizedBox(width: 10),
                 Expanded(
                   child: Text(
-                    isTrial ? 'URGENT: RANK UP TRIAL' : 'ACTIVE PROTOCOLS',
+                    isTrial ? 'URGENT: RANK UP TRIAL' : (isScheduledDay ? 'ACTIVE PROTOCOLS' : 'BONUS TRAINING'),
                     style: ShadowTextTheme.headline(18).copyWith(
-                      color: isTrial ? ShadowColors.portalBlue : null,
+                      color: isTrial ? ShadowColors.portalBlue : (isScheduledDay ? null : ShadowColors.textDisabled),
                     ),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
@@ -330,7 +437,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
     );
   }
 
-  Widget _buildStaggeredQuestTracker(DailyQuest quest, int index) {
+  Widget _buildStaggeredQuestTracker(DailyQuest quest, int index, DateTime selectedDate, int playerLevel, bool isToday) {
     final animIndex = (3 + index).clamp(0, _staggeredAnims.length - 1);
     
     return RepaintBoundary(
@@ -344,25 +451,26 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
             label: quest.title,
             icon: _getIconForQuest(quest.id),
             completed: quest.currentReps,
-            target: quest.getActualReps(ref.read(playerProvider).level),
+            target: quest.getActualReps(playerLevel),
             unit: quest.id == 'run' ? 'km' : 'reps',
             isDecimal: quest.id == 'run',
-            onAdd: () {
+            onAdd: isToday ? () {
               _vibrate();
-              ref.read(questProvider.notifier).updateReps(quest.id, 1);
-            },
-            onSubtract: () {
+              ref.read(questProvider.notifier).updateReps(quest.id, 1, date: selectedDate);
+            } : () {},
+            onSubtract: isToday ? () {
               _vibrate();
-              ref.read(questProvider.notifier).updateReps(quest.id, -1);
-            },
-            onLongAdd: () {
+              ref.read(questProvider.notifier).updateReps(quest.id, -1, date: selectedDate);
+            } : () {},
+            onLongAdd: isToday ? () {
               _vibrate();
-              ref.read(questProvider.notifier).updateReps(quest.id, 10);
-            },
-            onLongSubtract: () {
+              ref.read(questProvider.notifier).updateReps(quest.id, 10, date: selectedDate);
+            } : () {},
+            onLongSubtract: isToday ? () {
               _vibrate();
-              ref.read(questProvider.notifier).updateReps(quest.id, -10);
-            },
+              ref.read(questProvider.notifier).updateReps(quest.id, -10, date: selectedDate);
+            } : () {},
+            accentColor: isToday ? null : ShadowColors.textDisabled.withValues(alpha: 0.5),
           ),
         ),
       ),
@@ -410,7 +518,8 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
 
 class _CompletionBanner extends ConsumerStatefulWidget {
   final int expReward;
-  const _CompletionBanner({required this.expReward});
+  final bool isToday;
+  const _CompletionBanner({required this.expReward, this.isToday = true});
 
   @override
   ConsumerState<_CompletionBanner> createState() => _CompletionBannerState();
@@ -476,7 +585,7 @@ class _CompletionBannerState extends ConsumerState<_CompletionBanner> with Singl
 
   @override
   Widget build(BuildContext context) {
-    const accentColor = ShadowColors.portalBlue;
+    const accentColor = ShadowColors.success;
     
     return Container(
       width: double.infinity,
@@ -514,7 +623,7 @@ class _CompletionBannerState extends ConsumerState<_CompletionBanner> with Singl
                       const SizedBox(width: 12),
                       Expanded(
                         child: Text(
-                          '[SYSTEM ALERT] DAILY QUEST COMPLETED',
+                          widget.isToday ? '[SYSTEM ALERT] DAILY QUEST COMPLETED' : '[ARCHIVE] PROTOCOL COMPLETED',
                           style: ShadowTextTheme.mono(14, color: accentColor, weight: FontWeight.bold).copyWith(
                             letterSpacing: 1.5,
                             shadows: [
@@ -527,7 +636,9 @@ class _CompletionBannerState extends ConsumerState<_CompletionBanner> with Singl
                   ),
                   const SizedBox(height: 16),
                   Text(
-                    'The System has verified your progress. Your physical capabilities have exceeded the previous day\'s limits.',
+                    widget.isToday 
+                      ? 'The System has verified your progress. Your physical capabilities have exceeded the previous day\'s limits.'
+                      : 'Records indicate that you successfully completed the assigned protocols for this cycle.',
                     style: ShadowTextTheme.body(12, color: ShadowColors.textPrimary.withValues(alpha: 0.9)),
                   ),
                   const SizedBox(height: 24),
@@ -544,15 +655,13 @@ class _CompletionBannerState extends ConsumerState<_CompletionBanner> with Singl
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
                         _buildStatItem('REWARD', '+${widget.expReward} EXP', ShadowColors.xpGold),
-                        _buildStatItem('STATUS', 'RECOVERED', ShadowColors.success),
+                        _buildStatItem('STATUS', 'VERIFIED', ShadowColors.success),
                       ],
                     ),
                   ),
                   
-                  const SizedBox(height: 20),
-                  
-                  // Next Quest Timer
-                  if (_nextWorkoutIn > Duration.zero)
+                  if (widget.isToday && _nextWorkoutIn > Duration.zero) ...[
+                    const SizedBox(height: 20),
                     Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
@@ -600,6 +709,7 @@ class _CompletionBannerState extends ConsumerState<_CompletionBanner> with Singl
                         ),
                       ],
                     ),
+                  ],
                 ],
               ),
             ),
@@ -617,6 +727,47 @@ class _CompletionBannerState extends ConsumerState<_CompletionBanner> with Singl
         const SizedBox(height: 2),
         Text(value, style: ShadowTextTheme.mono(13, color: color, weight: FontWeight.bold)),
       ],
+    );
+  }
+}
+
+class _RestDayBanner extends StatelessWidget {
+  final DateTime date;
+  const _RestDayBanner({required this.date});
+
+  @override
+  Widget build(BuildContext context) {
+    const accentColor = ShadowColors.amethyst;
+    
+    return Container(
+      width: double.infinity,
+      margin: const EdgeInsets.symmetric(horizontal: 16),
+      decoration: BoxDecoration(
+        color: accentColor.withValues(alpha: 0.05),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: accentColor.withValues(alpha: 0.3), width: 1.5),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          children: [
+            const Icon(Icons.nightlight_round, color: accentColor, size: 32),
+            const SizedBox(height: 16),
+            Text(
+              '[SYSTEM NOTIFICATION] REST DAY',
+              style: ShadowTextTheme.mono(14, color: accentColor, weight: FontWeight.bold).copyWith(
+                letterSpacing: 1.5,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'No training protocols are scheduled for this cycle. Recovery is an essential part of growth.',
+              textAlign: TextAlign.center,
+              style: ShadowTextTheme.body(12, color: ShadowColors.textSecondary),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }
