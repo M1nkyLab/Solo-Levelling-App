@@ -55,6 +55,24 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
 
     _entranceCtrl.forward();
 
+    // Initial quest fetch for the current date
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final authState = ref.read(authProvider);
+      final selectedDate = ref.read(selectedDateProvider);
+      final currentQuests = ref.read(questProvider);
+      final schedule = ref.read(scheduleProvider);
+      
+      // Always fetch on startup to ensure sync, or at least if list is empty
+      if (authState.user != null && currentQuests.isEmpty) {
+        debugPrint('Dashboard: Initial quest fetch for ${selectedDate.weekday}. Schedule: ${schedule.days}');
+        ref.read(questProvider.notifier).fetchQuests(
+          authState.user!.id, 
+          date: selectedDate,
+          localSchedule: schedule.days,
+        );
+      }
+    });
+
     // Check for missed workout penalty on startup
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final scheduleState = ref.read(scheduleProvider);
@@ -85,10 +103,12 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
 
   @override
   Widget build(BuildContext context) {
+    final authState = ref.watch(authProvider);
     final player = ref.watch(playerProvider);
     final quests = ref.watch(questProvider);
     final scheduleState = ref.watch(scheduleProvider);
     final selectedDate = ref.watch(selectedDateProvider);
+    final isLoading = ref.watch(questLoadingProvider);
     
     final now = DateTime.now();
     final bool isToday = selectedDate.year == now.year && 
@@ -96,9 +116,24 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
                         selectedDate.day == now.day;
     
     final bool isScheduledDay = scheduleState.days.contains(selectedDate.weekday);
+    final bool hasQuests = quests.isNotEmpty;
+
+    // --- AUTONOMOUS ARISE TRIGGER ---
+    // If we are on a scheduled day but the list is empty and we're not already loading, 
+    // trigger an immediate background fetch to "Arise" the protocols.
+    if (isScheduledDay && !hasQuests && !isLoading && authState.user != null) {
+      debugPrint('Dashboard: Autonomous Arise triggered for ${selectedDate.weekday}');
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        ref.read(questProvider.notifier).fetchQuests(
+          authState.user!.id,
+          date: selectedDate,
+          localSchedule: scheduleState.days,
+        );
+      });
+    }
 
     final bool showTrialPortal = isToday && player.isTrialAvailable && player.trialStatus != TrialStatus.failed;
-    final bool allDone = quests.isNotEmpty && quests.every((q) => q.isCompleted);
+    final bool allDone = hasQuests && quests.every((q) => q.isCompleted);
 
     return Scaffold(
       backgroundColor: ShadowColors.blackTransparent,
@@ -187,8 +222,136 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
                 if (showTrialPortal)
                   SliverToBoxAdapter(
                     child: Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 16),
-                      child: TrialPortalCard(onTap: _enterTrial),
+                      padding: const EdgeInsets.fromLTRB(16, 0, 16, 24),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'PENDING RANK-UP EVALUATION',
+                            style: ShadowTextTheme.mono(10, color: ShadowColors.portalBlue, weight: FontWeight.bold),
+                          ),
+                          const SizedBox(height: 8),
+                          TrialPortalCard(onTap: _enterTrial),
+                        ],
+                      ),
+                    ),
+                  ),
+
+                if (isLoading)
+                  const SliverToBoxAdapter(
+                    child: Padding(
+                      padding: EdgeInsets.all(32),
+                      child: Center(
+                        child: Column(
+                          children: [
+                            CircularProgressIndicator(color: ShadowColors.amethyst),
+                            SizedBox(height: 16),
+                            Text(
+                              'SYNCHRONIZING WITH SYSTEM...',
+                              style: TextStyle(
+                                color: ShadowColors.textDisabled,
+                                fontSize: 12,
+                                fontFamily: 'ShadowMono',
+                                letterSpacing: 1.5,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  )
+                else if (!hasQuests)
+                   SliverToBoxAdapter(
+                    child: Padding(
+                      padding: const EdgeInsets.all(32),
+                      child: Center(
+                        child: Column(
+                          children: [
+                            Text(
+                              isScheduledDay 
+                                ? 'NO PROTOCOLS FOUND'
+                                : 'RECOVERY PHASE ACTIVE',
+                              textAlign: TextAlign.center,
+                              style: ShadowTextTheme.headline(20).copyWith(
+                                color: isScheduledDay ? ShadowColors.amethystLight : ShadowColors.textDisabled,
+                              ),
+                            ),
+                            const SizedBox(height: 16),
+                            Text(
+                              isScheduledDay
+                                ? 'The System has not yet generated your training protocols for this cycle.'
+                                : 'No training protocols are scheduled for this day.',
+                              textAlign: TextAlign.center,
+                              style: ShadowTextTheme.body(12, color: ShadowColors.textSecondary),
+                            ),
+                            const SizedBox(height: 12),
+                            Text(
+                              '[DIAGNOSTIC] Day: ${_weekday(selectedDate.weekday).toUpperCase()} (${selectedDate.weekday}) | Scheduled: ${scheduleState.days}',
+                              style: ShadowTextTheme.mono(8, color: ShadowColors.textDisabled),
+                            ),
+                            const SizedBox(height: 32),
+                            if (isScheduledDay)
+                              Column(
+                                children: [
+                                  _MonarchButton(
+                                    label: 'INITIALIZE PROTOCOLS',
+                                    icon: Icons.sync_rounded,
+                                    onTap: () {
+                                      _vibrate();
+                                      final user = ref.read(authProvider).user;
+                                      if (user != null) {
+                                        ref.read(questProvider.notifier).fetchQuests(
+                                          user.id, 
+                                          date: selectedDate,
+                                          localSchedule: scheduleState.days,
+                                        );
+                                      }
+                                    },
+                                    isPrimary: true,
+                                  ),
+                                  const SizedBox(height: 12),
+                                  _MonarchButton(
+                                    label: 'REPAIR SYSTEM',
+                                    icon: Icons.build_rounded,
+                                    onTap: () {
+                                      _vibrate();
+                                      final user = ref.read(authProvider).user;
+                                      if (user != null) {
+                                        // Force a total refresh of everything
+                                        ref.read(playerProvider.notifier).fetchFromSupabase();
+                                        ref.read(scheduleProvider.notifier).loadForUser(user.id);
+                                        ref.read(questProvider.notifier).fetchQuests(
+                                          user.id,
+                                          date: selectedDate,
+                                          localSchedule: scheduleState.days,
+                                        );
+                                      }
+                                    },
+                                    isPrimary: false,
+                                  ),
+                                ],
+                              )
+                            else
+                              _MonarchButton(
+                                label: 'START BONUS PROTOCOL',
+                                icon: Icons.bolt_rounded,
+                                onTap: () {
+                                  _vibrate();
+                                  final user = ref.read(authProvider).user;
+                                  if (user != null) {
+                                    ref.read(questProvider.notifier).fetchQuests(
+                                      user.id, 
+                                      date: selectedDate,
+                                      // Bonus protocol bypasses schedule check in service
+                                      localSchedule: [selectedDate.weekday], 
+                                    );
+                                  }
+                                },
+                                isPrimary: false,
+                              ),
+                          ],
+                        ),
+                      ),
                     ),
                   )
                 else
@@ -249,7 +412,11 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
               ref.read(selectedDateProvider.notifier).state = date;
               final user = ref.read(authProvider).user;
               if (user != null) {
-                ref.read(questProvider.notifier).fetchQuests(user.id, date: date);
+                ref.read(questProvider.notifier).fetchQuests(
+                  user.id, 
+                  date: date,
+                  localSchedule: schedule.toList(),
+                );
               }
             },
             child: AnimatedContainer(
@@ -387,8 +554,8 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
   }
 
   Widget _buildQuestSectionHeader(List<DailyQuest> quests, bool isTrial, List<int> scheduledDays, DateTime selectedDate, bool isScheduledDay) {
-    final dateStr =
-        '${_weekday(selectedDate.weekday)}, ${selectedDate.day} ${_month(selectedDate.month)}';
+    // Debug info to console for troubleshooting schedule issues
+    debugPrint('Dashboard: Selected weekday: ${selectedDate.weekday}, Scheduled: $scheduledDays, isScheduled: $isScheduledDay');
 
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -417,7 +584,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
                 const SizedBox(width: 10),
                 Expanded(
                   child: Text(
-                    isTrial ? 'URGENT: RANK UP TRIAL' : (isScheduledDay ? 'ACTIVE PROTOCOLS' : 'BONUS TRAINING'),
+                    isTrial ? 'URGENT: RANK UP TRIAL' : (isScheduledDay ? 'Daily Quest' : 'BONUS TRAINING'),
                     style: ShadowTextTheme.headline(18).copyWith(
                       color: isTrial ? ShadowColors.portalBlue : (isScheduledDay ? null : ShadowColors.textDisabled),
                     ),
@@ -425,10 +592,6 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
                     overflow: TextOverflow.ellipsis,
                   ),
                 ),
-                const SizedBox(width: 10),
-                Text(dateStr,
-                    style: ShadowTextTheme.mono(11,
-                        color: ShadowColors.textSecondary)),
               ],
             ),
           ),
@@ -771,3 +934,56 @@ class _RestDayBanner extends StatelessWidget {
     );
   }
 }
+
+
+class _MonarchButton extends StatelessWidget {
+  final String label;
+  final IconData icon;
+  final VoidCallback onTap;
+  final bool isPrimary;
+
+  const _MonarchButton({
+    required this.label,
+    required this.icon,
+    required this.onTap,
+    this.isPrimary = false,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final color = isPrimary ? ShadowColors.amethyst : ShadowColors.textDisabled;
+    
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+        decoration: BoxDecoration(
+          color: color.withValues(alpha: 0.1),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: color.withValues(alpha: 0.4), width: 1.5),
+          boxShadow: isPrimary ? [
+            BoxShadow(
+              color: color.withValues(alpha: 0.1),
+              blurRadius: 10,
+              spreadRadius: 2,
+            )
+          ] : null,
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, color: color, size: 18),
+            const SizedBox(width: 12),
+            Text(
+              label,
+              style: ShadowTextTheme.mono(12, color: color, weight: FontWeight.bold).copyWith(
+                letterSpacing: 1.2,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+

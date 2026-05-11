@@ -188,6 +188,10 @@ CREATE POLICY "Players can update their own quests"
     ON daily_quests FOR UPDATE
     USING (player_id IN (SELECT id FROM players WHERE user_id = auth.uid()));
 
+CREATE POLICY "Players can insert their own quests"
+    ON daily_quests FOR INSERT
+    WITH CHECK (player_id IN (SELECT id FROM players WHERE user_id = auth.uid()));
+
 -- RLS for workout_schedules
 ALTER TABLE workout_schedules ENABLE ROW LEVEL SECURITY;
 

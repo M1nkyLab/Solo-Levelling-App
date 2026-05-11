@@ -63,6 +63,15 @@ class PlayerNotifier extends StateNotifier<Player> {
     final response = await _playerService.getPlayerProfile(user.id);
     if (response.success && response.data != null) {
       state = response.data!;
+    } else if (response.error == 'PLAYER_NOT_FOUND') {
+      // Initialize new player if not found
+      debugPrint('Player not found in System. Initializing Arise Protocol...');
+      final initResponse = await _playerService.initializePlayer(user.id);
+      if (initResponse.success && initResponse.data != null) {
+        state = initResponse.data!;
+      } else {
+        debugPrint('Error initializing player: ${initResponse.error}');
+      }
     } else {
       debugPrint('Error fetching player from Supabase: ${response.error}');
     }

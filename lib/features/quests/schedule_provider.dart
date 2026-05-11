@@ -65,8 +65,9 @@ class ScheduleNotifier extends StateNotifier<ScheduleState> {
           .from('players')
           .select('id')
           .eq('user_id', userId)
-          .single();
+          .maybeSingle();
       
+      if (playerRes == null) return;
       final playerId = playerRes['id'];
 
       final response = await _supabase
@@ -111,41 +112,41 @@ class ScheduleNotifier extends StateNotifier<ScheduleState> {
   }
 
   Future<void> confirmSchedule() async {
-    state = state.copyWith(isConfigured: true);
-    if (_currentUserId != null) {
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.setBool('$_configuredKeyPrefix$_currentUserId', true);
-      await _syncToSupabase();
-    }
-  }
-
-  Future<void> _syncToSupabase() async {
     if (_currentUserId == null) return;
-    
+
     try {
+      // 1. Get the player ID first
       final playerRes = await _supabase
           .from('players')
           .select('id')
           .eq('user_id', _currentUserId!)
-          .single();
+          .maybeSingle();
       
+      if (playerRes == null) return;
       final playerId = playerRes['id'];
 
-      await _supabase.from('workout_schedules').upsert({
-        'player_id': playerId,
-        'days_of_week': state.days,
-        'is_configured': state.isConfigured,
-        'updated_at': DateTime.now().toIso8601String(),
-      });
+      // 2. Update the schedule in the database
+      await _supabase
+          .from('workout_schedules')
+          .upsert({
+            'player_id': playerId,
+            'days_of_week': state.days,
+            'is_configured': true,
+            'updated_at': DateTime.now().toIso8601String(),
+          });
+
+      // 3. Update local state and cache
+      state = state.copyWith(isConfigured: true);
       
-      // Also save locally
       final prefs = await SharedPreferences.getInstance();
+      await prefs.setBool('$_configuredKeyPrefix$_currentUserId', true);
       await prefs.setStringList(
         '$_scheduleKeyPrefix$_currentUserId', 
         state.days.map((d) => d.toString()).toList(),
       );
+      
     } catch (e) {
-      debugPrint('Error syncing schedule to Supabase: $e');
+      debugPrint('Error saving schedule: $e');
     }
   }
 }

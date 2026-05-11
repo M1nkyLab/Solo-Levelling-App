@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'schedule_provider.dart';
+import 'quest_provider.dart';
+import '../auth/auth_provider.dart';
 import '../../core/theme/app_theme.dart';
 import 'dashboard_screen.dart';
 
@@ -20,6 +22,22 @@ class _ScheduleSelectionScreenState extends ConsumerState<ScheduleSelectionScree
   void _handleContinue() async {
     HapticFeedback.mediumImpact();
     await ref.read(scheduleProvider.notifier).confirmSchedule();
+    
+    // Refresh quests based on new schedule
+    final authState = ref.read(authProvider);
+    final scheduleState = ref.read(scheduleProvider);
+    
+    if (authState.user != null) {
+      final now = DateTime.now();
+      debugPrint('ScheduleSelection: Refreshing quests for today (${now.weekday}). Schedule: ${scheduleState.days}');
+      ref.read(selectedDateProvider.notifier).state = now;
+      await ref.read(questProvider.notifier).fetchQuests(
+        authState.user!.id, 
+        date: now,
+        localSchedule: scheduleState.days,
+      );
+    }
+
     if (!mounted) return;
     Navigator.of(context).pushReplacement(
       MaterialPageRoute(builder: (context) => const DashboardScreen()),

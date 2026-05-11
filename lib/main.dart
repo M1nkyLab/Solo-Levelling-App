@@ -53,9 +53,15 @@ class SoloLevellingApp extends ConsumerWidget {
     // ── SYSTEM: Handle per-user schedule and quest loading
     ref.listen(authProvider, (previous, next) {
       if (next.isAuthenticated && next.user != null) {
-        ref.read(scheduleProvider.notifier).loadForUser(next.user!.id);
-        ref.read(questProvider.notifier).fetchQuests(next.user!.id);
-        ref.read(playerProvider.notifier).fetchFromSupabase();
+        // Run sequence in a closure to ensure proper initialization order
+        () async {
+          // 1. Ensure player exists and is synced first
+          await ref.read(playerProvider.notifier).fetchFromSupabase();
+          // 2. Load schedule and quests now that we know player record exists
+          await ref.read(scheduleProvider.notifier).loadForUser(next.user!.id);
+          final schedule = ref.read(scheduleProvider);
+          await ref.read(questProvider.notifier).fetchQuests(next.user!.id, localSchedule: schedule.days);
+        }();
       } else if (!next.isAuthenticated) {
         ref.read(scheduleProvider.notifier).reset();
         ref.read(playerProvider.notifier).reset();

@@ -17,7 +17,11 @@ class PlayerService {
           .from('players')
           .select()
           .eq('user_id', userId)
-          .single();
+          .maybeSingle();
+
+      if (response == null) {
+        return ApiResponse.error('PLAYER_NOT_FOUND');
+      }
 
       final player = Player.fromJson(response);
       return ApiResponse.success(player);
@@ -25,6 +29,44 @@ class PlayerService {
     } catch (e) {
       debugPrint('System Error fetching player profile: $e');
       return ApiResponse.error('Failed to synchronize with the System: ${e.toString()}');
+    }
+  }
+
+  /// Initialize a new player record for a user
+  Future<ApiResponse<Player>> initializePlayer(String userId) async {
+    try {
+      final response = await _supabase
+          .from('players')
+          .insert({
+            'user_id': userId,
+            'level': 1,
+            'rank': 'E',
+            'current_exp': 0,
+            'max_exp': 100,
+            'current_hp': 100,
+            'max_hp': 100,
+            'strength': 10,
+            'agility': 10,
+            'vitality': 10,
+            'intelligence': 10,
+            'sense': 10,
+          })
+          .select()
+          .single();
+
+      final player = Player.fromJson(response);
+      
+      // Also ensure a default schedule exists
+      await _supabase.from('workout_schedules').upsert({
+        'player_id': player.id,
+        'days_of_week': [1, 3, 5],
+        'is_configured': false,
+      });
+
+      return ApiResponse.success(player);
+    } catch (e) {
+      debugPrint('Error initializing player: $e');
+      return ApiResponse.error('System initialization failure: ${e.toString()}');
     }
   }
 

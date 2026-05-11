@@ -84,25 +84,35 @@ abstract final class SystemLogic {
   
   // ── Quest Requirements Scaling ───────────────────────────────────────────
 
-  /// Calculates the required reps/km for a quest based on player level.
-  /// uses the specific math formulas provided.
+  /// Calculates the required reps/km for a quest based on player level (Rank).
   static int calculateRequirement(String questId, int level) {
-    final int safeLevel = level.clamp(1, 100);
+    final HunterRank rank = determineHunterRank(level);
+    
+    // Scale daily requirements strictly based on Hunter Rank
+    // E: 20, D: 40, C: 60, B: 80, A: 90, S: 100
+    int baseReps;
+    switch (rank) {
+      case HunterRank.eRank: baseReps = 20; break;
+      case HunterRank.dRank: baseReps = 40; break;
+      case HunterRank.cRank: baseReps = 60; break;
+      case HunterRank.bRank: baseReps = 80; break;
+      case HunterRank.aRank: baseReps = 90; break;
+      case HunterRank.sRank: baseReps = 100; break;
+    }
     
     switch (questId) {
       case 'pushups':
-        // Math: Round(10 + (Level * 0.9))
-        return (10 + (safeLevel * 0.9)).round();
+        return baseReps;
       case 'situps':
       case 'squats':
-        // Math: Round(15 + (Level * 0.85))
-        return (15 + (safeLevel * 0.85)).round();
+        // Situps and Squats are slightly higher for variety in lower ranks
+        return (rank == HunterRank.eRank) ? baseReps + 5 : baseReps;
       case 'run':
-        // Math: (1.0 + (Level * 0.09)) km
-        final double km = 1.0 + (safeLevel * 0.09);
+        // 2km to 10km scaling
+        final double km = baseReps / 10.0;
         return (km * 10).round(); // Stored as decimeters/10th of km
       default:
-        return 10;
+        return baseReps;
     }
   }
 
