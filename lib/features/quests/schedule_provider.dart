@@ -7,22 +7,26 @@ class ScheduleState {
   final List<int> days;
   final bool isConfigured;
   final bool isLoading;
+  final bool isLoaded;
 
   ScheduleState({
     required this.days,
     this.isConfigured = false,
     this.isLoading = false,
+    this.isLoaded = false,
   });
 
   ScheduleState copyWith({
     List<int>? days,
     bool? isConfigured,
     bool? isLoading,
+    bool? isLoaded,
   }) {
     return ScheduleState(
       days: days ?? this.days,
       isConfigured: isConfigured ?? this.isConfigured,
       isLoading: isLoading ?? this.isLoading,
+      isLoaded: isLoaded ?? this.isLoaded,
     );
   }
 }
@@ -37,7 +41,7 @@ class ScheduleNotifier extends StateNotifier<ScheduleState> {
 
   Future<void> loadForUser(String userId) async {
     _currentUserId = userId;
-    state = state.copyWith(isLoading: true);
+    state = state.copyWith(isLoading: true, isLoaded: false);
     
     // 1. Try local cache first
     await _loadFromLocal(userId);
@@ -45,7 +49,7 @@ class ScheduleNotifier extends StateNotifier<ScheduleState> {
     // 2. Fetch from Supabase to sync
     await _fetchFromSupabase(userId);
 
-    state = state.copyWith(isLoading: false);
+    state = state.copyWith(isLoading: false, isLoaded: true);
   }
 
   Future<void> _loadFromLocal(String userId) async {

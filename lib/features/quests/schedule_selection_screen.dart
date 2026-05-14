@@ -23,6 +23,9 @@ class _ScheduleSelectionScreenState extends ConsumerState<ScheduleSelectionScree
     HapticFeedback.mediumImpact();
     await ref.read(scheduleProvider.notifier).confirmSchedule();
     
+    // Mark setup as complete in auth state
+    ref.read(authProvider.notifier).completeSetup();
+    
     // Refresh quests based on new schedule
     final authState = ref.read(authProvider);
     final scheduleState = ref.read(scheduleProvider);

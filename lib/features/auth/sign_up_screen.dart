@@ -94,7 +94,7 @@ class _SignUpScreenState extends ConsumerState<SignUpScreen> {
                   const SizedBox(height: 32),
 
                   Text(
-                    'HUNTER DESIGNATION REGISTRATION',
+                    'Hunter registration',
                     style: ShadowTextTheme.headline(24, weight: FontWeight.w900).copyWith(
                       letterSpacing: 2,
                       color: ShadowColors.amethystLight,
@@ -103,7 +103,7 @@ class _SignUpScreenState extends ConsumerState<SignUpScreen> {
                   ),
                   const SizedBox(height: 8),
                   Text(
-                    'INITIALIZING SHADOW MONARCH PROTOCOL',
+                    'Initializing system awakening...',
                     style: ShadowTextTheme.mono(10, color: ShadowColors.textSecondary),
                   ),
                   const SizedBox(height: 48),
@@ -112,7 +112,7 @@ class _SignUpScreenState extends ConsumerState<SignUpScreen> {
                   TextField(
                     controller: _usernameController,
                     decoration: const InputDecoration(
-                      labelText: 'HUNTER NAME',
+                      labelText: 'Hunter alias',
                       prefixIcon: Icon(Icons.person_outline),
                     ),
                     style: ShadowTextTheme.mono(14),
@@ -124,7 +124,7 @@ class _SignUpScreenState extends ConsumerState<SignUpScreen> {
                     controller: _emailController,
                     keyboardType: TextInputType.emailAddress,
                     decoration: const InputDecoration(
-                      labelText: 'CREDENTIALS EMAIL (ID)',
+                      labelText: 'Email address',
                       prefixIcon: Icon(Icons.email_outlined),
                     ),
                     style: ShadowTextTheme.mono(14),
@@ -136,7 +136,7 @@ class _SignUpScreenState extends ConsumerState<SignUpScreen> {
                     controller: _passwordController,
                     obscureText: !_showPassword,
                     decoration: InputDecoration(
-                      labelText: 'PASSWORD',
+                      labelText: 'Password',
                       prefixIcon: const Icon(Icons.lock_outline),
                       suffixIcon: IconButton(
                         icon: Icon(
@@ -158,7 +158,7 @@ class _SignUpScreenState extends ConsumerState<SignUpScreen> {
                       onPressed: authState.isLoading ? null : _handleSignUp,
                       child: authState.isLoading
                           ? const CircularProgressIndicator(strokeWidth: 2)
-                          : const Text('ARISE'),
+                          : const Text('Arise'),
                     ),
                   ),
                 ],

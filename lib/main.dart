@@ -49,10 +49,12 @@ class SoloLevellingApp extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final authState = ref.watch(authProvider);
     final scheduleState = ref.watch(scheduleProvider);
+    final player = ref.watch(playerProvider);
 
     // ── SYSTEM: Handle per-user schedule and quest loading
     ref.listen(authProvider, (previous, next) {
-      if (next.isAuthenticated && next.user != null) {
+      final wasAuthenticated = previous?.isAuthenticated ?? false;
+      if (!wasAuthenticated && next.isAuthenticated && next.user != null) {
         // Run sequence in a closure to ensure proper initialization order
         () async {
           // 1. Ensure player exists and is synced first
@@ -62,17 +64,21 @@ class SoloLevellingApp extends ConsumerWidget {
           final schedule = ref.read(scheduleProvider);
           await ref.read(questProvider.notifier).fetchQuests(next.user!.id, localSchedule: schedule.days);
         }();
-      } else if (!next.isAuthenticated) {
+      } else if (wasAuthenticated && !next.isAuthenticated) {
         ref.read(scheduleProvider.notifier).reset();
         ref.read(playerProvider.notifier).reset();
       }
     });
 
     Widget home;
-    if (authState.isLoading || (authState.isAuthenticated && scheduleState.isLoading)) {
+    // ── SYSTEM: Improved transition logic using isLoaded flags
+    final bool isAuthenticating = authState.isLoading;
+    final bool isSyncingData = authState.isAuthenticated && (!player.isLoaded || !scheduleState.isLoaded);
+
+    if (isAuthenticating || isSyncingData) {
       home = const SplashScreen();
     } else if (authState.isAuthenticated) {
-      if (scheduleState.isConfigured) {
+      if (scheduleState.isConfigured || !authState.needsScheduleSetup) {
         home = const DashboardScreen();
       } else {
         home = const ScheduleSelectionScreen();

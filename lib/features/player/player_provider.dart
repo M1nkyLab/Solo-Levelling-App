@@ -58,22 +58,27 @@ class PlayerNotifier extends StateNotifier<Player> {
   /// Synchronize player state from Supabase
   Future<void> fetchFromSupabase() async {
     final user = Supabase.instance.client.auth.currentUser;
-    if (user == null) return;
+    if (user == null) {
+      state = state.copyWith(isLoaded: true);
+      return;
+    }
 
     final response = await _playerService.getPlayerProfile(user.id);
     if (response.success && response.data != null) {
-      state = response.data!;
+      state = response.data!.copyWith(isLoaded: true);
     } else if (response.error == 'PLAYER_NOT_FOUND') {
       // Initialize new player if not found
       debugPrint('Player not found in System. Initializing Arise Protocol...');
       final initResponse = await _playerService.initializePlayer(user.id);
       if (initResponse.success && initResponse.data != null) {
-        state = initResponse.data!;
+        state = initResponse.data!.copyWith(isLoaded: true);
       } else {
         debugPrint('Error initializing player: ${initResponse.error}');
+        state = state.copyWith(isLoaded: true); // Prevent lockout on initialization error
       }
     } else {
       debugPrint('Error fetching player from Supabase: ${response.error}');
+      state = state.copyWith(isLoaded: true); // Prevent lockout on fetch error
     }
   }
 
@@ -97,6 +102,7 @@ class PlayerNotifier extends StateNotifier<Player> {
       sense: 10,
       availableStatPoints: 0,
       lastPenaltyCheck: null,
+      isLoaded: false,
     );
   }
 

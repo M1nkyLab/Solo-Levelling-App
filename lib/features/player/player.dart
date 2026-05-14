@@ -24,6 +24,7 @@ class Player {
   final bool isDead;
   final DateTime? lastPenaltyCheck;
   final DateTime? lastWorkoutDate;
+  final bool isLoaded;
 
   Player({
     required this.id,
@@ -44,6 +45,7 @@ class Player {
     this.isDead = false,
     this.lastPenaltyCheck,
     this.lastWorkoutDate,
+    this.isLoaded = false,
   });
 
   bool get isTrialAvailable => currentExp >= maxExp;
@@ -67,6 +69,7 @@ class Player {
     bool? isDead,
     DateTime? lastPenaltyCheck,
     DateTime? lastWorkoutDate,
+    bool? isLoaded,
   }) {
     return Player(
       id: id ?? this.id,
@@ -87,6 +90,7 @@ class Player {
       isDead: isDead ?? this.isDead,
       lastPenaltyCheck: lastPenaltyCheck ?? this.lastPenaltyCheck,
       lastWorkoutDate: lastWorkoutDate ?? this.lastWorkoutDate,
+      isLoaded: isLoaded ?? this.isLoaded,
     );
   }
 
