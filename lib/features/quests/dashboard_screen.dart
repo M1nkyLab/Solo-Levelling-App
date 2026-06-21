@@ -16,9 +16,11 @@ import 'package:solo_levelling_app/features/trials/trial_portal_card.dart';
 import 'package:solo_levelling_app/features/trials/trial_failed_card.dart';
 import 'package:solo_levelling_app/features/player/system_penalty_overlay.dart';
 import 'package:solo_levelling_app/features/trials/trial_screen.dart';
-import 'package:solo_levelling_app/features/player/profile_screen.dart';
 import 'package:solo_levelling_app/features/auth/auth_provider.dart';
 import 'package:solo_levelling_app/features/quests/quest_complete_overlay.dart';
+import 'package:solo_levelling_app/features/quests/dashboard_quest_tile.dart';
+import 'package:solo_levelling_app/features/settings/settings_screen.dart';
+import 'package:solo_levelling_app/features/player/character_avatar_widget.dart';
 
 // ─────────────────────────────────────────────
 //  Dashboard Screen
@@ -35,6 +37,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
   late AnimationController _entranceCtrl;
   final List<Animation<double>> _staggeredAnims = [];
   int _penaltyExpLost = 0;
+  bool _isQuestStarted = false;
 
   @override
   void initState() {
@@ -164,12 +167,25 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
                           position: _staggeredAnims[0].drive(
                             Tween<Offset>(begin: const Offset(0, 0.2), end: Offset.zero),
                           ),
-                          child: PlayerStatusHeader(
-                            level:      player.level,
-                            currentXp:  player.currentExp,
-                            maxXp:      player.maxExp,
-                            currentHp:  player.currentHp,
-                            maxHp:      player.maxHp,
+                          child: Stack(
+                            clipBehavior: Clip.none,
+                            alignment: Alignment.bottomCenter,
+                            children: [
+                              CharacterAvatarWidget(
+                                rank: player.rank,
+                                level: player.level,
+                              ),
+                              Padding(
+                                padding: const EdgeInsets.only(bottom: 20),
+                                child: PlayerStatusHeader(
+                                  level:      player.level,
+                                  currentXp:  player.currentExp,
+                                  maxXp:      player.maxExp,
+                                  currentHp:  player.currentHp,
+                                  maxHp:      player.maxHp,
+                                ),
+                              ),
+                            ],
                           ),
                         ),
                       ),
@@ -186,7 +202,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
                           child: (allDone && !showTrialPortal)
                               ? _CompletionBanner(expReward: player.level * 25, isToday: isToday)
                               : (!isScheduledDay)
-                                  ? _RestDayBanner(date: selectedDate)
+                                  ? const SizedBox.shrink()
                                   : Column(
                                       children: [
                                         if (isToday)
@@ -211,7 +227,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
                         const SizedBox(height: 24),
                       ],
 
-                      _buildQuestSectionHeader(quests, showTrialPortal, scheduleState.days, selectedDate, isScheduledDay),
+                      _buildQuestSectionHeader(quests, showTrialPortal, scheduleState.days, selectedDate, isScheduledDay, player.trialStatus == TrialStatus.penalty),
                       
                       const SizedBox(height: 16),
                     ],
@@ -276,18 +292,12 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
                               ),
                             ),
                             const SizedBox(height: 16),
-                            Text(
-                              isScheduledDay
-                                ? 'The System has not yet generated your training protocols for this cycle.'
-                                : 'No training protocols are scheduled for this day.',
-                              textAlign: TextAlign.center,
-                              style: ShadowTextTheme.body(12, color: ShadowColors.textSecondary),
-                            ),
-                            const SizedBox(height: 12),
-                            Text(
-                              '[DIAGNOSTIC] Day: ${_weekday(selectedDate.weekday).toUpperCase()} (${selectedDate.weekday}) | Scheduled: ${scheduleState.days}',
-                              style: ShadowTextTheme.mono(8, color: ShadowColors.textDisabled),
-                            ),
+                            if (isScheduledDay)
+                              Text(
+                                'The System has not yet generated your training protocols for this cycle.',
+                                textAlign: TextAlign.center,
+                                style: ShadowTextTheme.body(12, color: ShadowColors.textSecondary),
+                              ),
                             const SizedBox(height: 32),
                             if (isScheduledDay)
                               Column(
@@ -353,21 +363,53 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
                       ),
                     ),
                   )
-                else
-                  SliverPadding(
-                    padding: const EdgeInsets.symmetric(horizontal: 16),
-                    sliver: SliverList.builder(
-                      itemCount: quests.length,
-                      itemBuilder: (context, index) {
-                        return Padding(
-                          padding: const EdgeInsets.only(bottom: 12),
-                          child: _buildStaggeredQuestTracker(quests[index], index, selectedDate, player.level, isToday),
-                        );
-                      },
+                else if (!allDone)
+                  SliverToBoxAdapter(
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                      child: Stack(
+                        children: [
+                          // Base: The actual list of quests
+                          Column(
+                            children: quests.map((q) => DashboardQuestTile(
+                              quest: q,
+                              targetReps: q.getActualReps(player.level),
+                              selectedDate: selectedDate,
+                            )).toList(),
+                          ),
+
+                          // Top layer: Blur & Start Quest Button
+                          if (!_isQuestStarted)
+                            Positioned.fill(
+                              child: Container(
+                                decoration: BoxDecoration(
+                                  color: ShadowColors.obsidian.withValues(alpha: 0.8),
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                child: Center(
+                                  child: Padding(
+                                    padding: const EdgeInsets.symmetric(horizontal: 24),
+                                    child: _MonarchButton(
+                                      label: 'START QUEST',
+                                      icon: Icons.play_arrow_rounded,
+                                      onTap: () {
+                                        _vibrate();
+                                        setState(() {
+                                          _isQuestStarted = true;
+                                        });
+                                      },
+                                      isPrimary: true,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ),
+                        ],
+                      ),
                     ),
                   ),
 
-                const SliverToBoxAdapter(child: SizedBox(height: 40)),
+                const SliverToBoxAdapter(child: SizedBox(height: 80)),
               ],
             ),
           ),
@@ -390,7 +432,59 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
                 },
               ),
             ),
+          
+          _buildBottomNav(),
         ],
+      ),
+    );
+  }
+
+  Widget _buildBottomNav() {
+    return Positioned(
+      left: 24,
+      right: 24,
+      bottom: 24,
+      child: Container(
+        height: 64,
+        decoration: BoxDecoration(
+          color: ShadowColors.obsidian,
+          borderRadius: BorderRadius.circular(32),
+          border: Border.all(color: ShadowColors.systemBorder.withValues(alpha: 0.5), width: 1),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.5),
+              blurRadius: 10,
+              offset: const Offset(0, 4),
+            )
+          ]
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+          children: [
+            _buildNavItem(Icons.home_rounded, true, () {}),
+            _buildNavItem(Icons.settings_rounded, false, () {
+              HapticFeedback.lightImpact();
+              Navigator.of(context).push(
+                MaterialPageRoute(builder: (context) => const SettingsScreen()),
+              );
+            }),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildNavItem(IconData icon, bool isActive, VoidCallback onTap) {
+    return Expanded(
+      child: GestureDetector(
+        onTap: onTap,
+        behavior: HitTestBehavior.opaque,
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(icon, color: isActive ? ShadowColors.amethyst : ShadowColors.textDisabled, size: 28),
+          ],
+        ),
       ),
     );
   }
@@ -434,24 +528,18 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
             child: AnimatedContainer(
               duration: const Duration(milliseconds: 200),
               width: 50,
-              margin: const EdgeInsets.only(right: 12),
+              margin: const EdgeInsets.only(right: 8),
               decoration: BoxDecoration(
                 color: isSelected 
-                  ? ShadowColors.amethyst.withValues(alpha: 0.2) 
-                  : ShadowColors.surfaceAlt.withValues(alpha: 0.4),
-                borderRadius: BorderRadius.circular(12),
+                  ? ShadowColors.amethyst.withValues(alpha: 0.15) 
+                  : ShadowColors.surfaceAlt,
+                borderRadius: BorderRadius.circular(2),
                 border: Border.all(
                   color: isSelected 
                     ? ShadowColors.amethyst 
-                    : (isToday ? ShadowColors.amethyst.withValues(alpha: 0.3) : Colors.transparent),
-                  width: 1.5,
+                    : (isToday ? ShadowColors.amethyst.withValues(alpha: 0.4) : ShadowColors.systemBorder),
+                  width: 1.0,
                 ),
-                boxShadow: isSelected ? [
-                  BoxShadow(
-                    color: ShadowColors.amethyst.withValues(alpha: 0.1),
-                    blurRadius: 8,
-                  )
-                ] : null,
               ),
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
@@ -477,7 +565,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
                       width: 4,
                       height: 4,
                       decoration: const BoxDecoration(
-                        shape: BoxShape.circle,
+                        shape: BoxShape.rectangle,
                         color: ShadowColors.amethyst,
                       ),
                     ),
@@ -494,80 +582,29 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
     return Positioned.fill(
       child: IgnorePointer(
         child: Container(
-          color: ShadowColors.voidDark, // Corrected to Midnight Void base
-          child: Stack(
-            children: [
-              Positioned(
-                top: -80,
-                left: -60,
-                child: _glowOrb(
-                  color: ShadowColors.amethyst,
-                  size: 300,
-                  opacity: 0.12,
-                ),
-              ),
-              Positioned(
-                bottom: -100,
-                right: -80,
-                child: _glowOrb(
-                  color: ShadowColors.portalBlue,
-                  size: 350,
-                  opacity: 0.09,
-                ),
-              ),
-            ],
-          ),
+          color: ShadowColors.obsidian, // Deep Obsidian background
         ),
       ),
     );
   }
 
   Widget _buildAppBar() {
+    final user = ref.watch(authProvider).user;
+    final username = user?.userMetadata?['username'] as String? ?? 'HUNTER';
+
     return SliverAppBar(
       backgroundColor: Colors.transparent,
       elevation: 0,
-      pinned: false,
-      floating: true,
-      snap: true,
-      expandedHeight: 0,
+      pinned: true,
+      centerTitle: true,
       title: Text(
-        'SYSTEM OVERVIEW',
-        style: ShadowTextTheme.headline(15, letterSpacing: 2),
+        username.toUpperCase(),
+        style: ShadowTextTheme.headline(20, letterSpacing: 2),
       ),
-      actions: [
-        Padding(
-          padding: const EdgeInsets.only(right: 16),
-          child: GestureDetector(
-            onTap: () {
-              HapticFeedback.lightImpact();
-              Navigator.of(context).push(
-                MaterialPageRoute(builder: (context) => const ProfileScreen()),
-              );
-            },
-            child: Container(
-              padding: const EdgeInsets.all(8),
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: ShadowColors.surfaceAlt.withValues(alpha: 0.5),
-                border: Border.all(
-                  color: ShadowColors.amethyst.withValues(alpha: 0.3),
-                  width: 1,
-                ),
-              ),
-              child: const Text(
-                '👤', // Hunter Emoji
-                style: TextStyle(fontSize: 18),
-              ),
-            ),          ),
-        ),
-      ],
     );
   }
 
-  Widget _buildQuestSectionHeader(List<DailyQuest> quests, bool isTrial, List<int> scheduledDays, DateTime selectedDate, bool isScheduledDay) {
-    // Debug info to console for troubleshooting schedule issues
-    debugPrint('Dashboard: Selected weekday: ${selectedDate.weekday}, Scheduled: $scheduledDays, isScheduled: $isScheduledDay');
-
+  Widget _buildQuestSectionHeader(List<DailyQuest> quests, bool isTrial, List<int> scheduledDays, DateTime selectedDate, bool isScheduledDay, bool isPenalty) {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16),
       child: Column(
@@ -576,69 +613,25 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
           FadeTransition(
             opacity: _staggeredAnims[2],
             child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              crossAxisAlignment: CrossAxisAlignment.end,
               children: [
-                Container(
-                  width: 4,
-                  height: 22,
-                  decoration: BoxDecoration(
-                    color: isTrial ? ShadowColors.portalBlue : ShadowColors.amethyst,
-                    borderRadius: BorderRadius.circular(2),
-                    boxShadow: [
-                      BoxShadow(
-                        color: (isTrial ? ShadowColors.portalBlue : ShadowColors.amethyst)
-                            .withValues(alpha: 0.6),
-                        blurRadius: 8,
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: Text(
-                    isTrial ? 'URGENT: RANK UP TRIAL' : (isScheduledDay ? 'Daily Quest' : 'BONUS TRAINING'),
-                    style: ShadowTextTheme.headline(18).copyWith(
-                      color: isTrial ? ShadowColors.portalBlue : (isScheduledDay ? null : ShadowColors.textDisabled),
-                    ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
+                Text(
+                  isTrial ? 'RANK UP TRIAL' : (isPenalty ? 'PENALTY PROTOCOL' : 'DAILY QUESTS'),
+                  style: ShadowTextTheme.headline(24, letterSpacing: 1.5).copyWith(
+                    color: isTrial ? ShadowColors.portalBlue : (isPenalty ? ShadowColors.hpRed : ShadowColors.textPrimary),
                   ),
                 ),
               ],
             ),
           ),
+          const SizedBox(height: 8),
+          Container(
+            width: 40,
+            height: 1,
+            color: isTrial ? ShadowColors.portalBlue : (isPenalty ? ShadowColors.hpRed : ShadowColors.amethyst),
+          ),
         ],
-      ),
-    );
-  }
-
-  Widget _buildStaggeredQuestTracker(DailyQuest quest, int index, DateTime selectedDate, int playerLevel, bool isToday) {
-    final animIndex = (3 + index).clamp(0, _staggeredAnims.length - 1);
-    
-    return RepaintBoundary(
-      child: FadeTransition(
-        opacity: _staggeredAnims[animIndex],
-        child: SlideTransition(
-          position: _staggeredAnims[animIndex].drive(
-            Tween<Offset>(begin: const Offset(0.1, 0), end: Offset.zero),
-          ),
-          child: QuestTracker(
-            label: quest.title,
-            icon: _getIconForQuest(quest.id),
-            completed: quest.currentReps,
-            target: quest.getActualReps(playerLevel),
-            unit: quest.id == 'run' ? 'km' : 'reps',
-            isDecimal: quest.id == 'run',
-            onAdd: isToday ? () {
-              _vibrate();
-              ref.read(questProvider.notifier).updateReps(quest.id, 1, date: selectedDate);
-            } : () {},
-            onLongAdd: isToday ? () {
-              _vibrate();
-              ref.read(questProvider.notifier).updateReps(quest.id, 10, date: selectedDate);
-            } : () {},
-            accentColor: isToday ? null : ShadowColors.textDisabled.withValues(alpha: 0.5),
-          ),
-        ),
       ),
     );
   }
@@ -655,26 +648,6 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
 
   String _weekday(int d) =>
       ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'][d - 1];
-
-  Widget _glowOrb({
-    required Color color,
-    required double size,
-    required double opacity,
-  }) {
-    return Container(
-      width: size,
-      height: size,
-      decoration: BoxDecoration(
-        shape: BoxShape.circle,
-        gradient: RadialGradient(
-          colors: [
-            color.withValues(alpha: opacity),
-            color.withValues(alpha: 0),
-          ],
-        ),
-      ),
-    );
-  }
 }
 
 class _CompletionBanner extends ConsumerStatefulWidget {
@@ -748,33 +721,21 @@ class _CompletionBannerState extends ConsumerState<_CompletionBanner> with Singl
   Widget build(BuildContext context) {
     const accentColor = ShadowColors.success;
     
-    // If today is completed but we're still waiting for the next cycle, show the timer.
-    // Otherwise, if it's an archived/past day, we'll keep the banner but maybe we should 
-    // also simplify it or just show a simpler message.
-    
     return Container(
       width: double.infinity,
       margin: const EdgeInsets.symmetric(horizontal: 16),
       decoration: BoxDecoration(
         color: accentColor.withValues(alpha: 0.05),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: accentColor.withValues(alpha: 0.3), width: 1.5),
-        boxShadow: [
-          BoxShadow(
-            color: accentColor.withValues(alpha: 0.1),
-            blurRadius: 20,
-            spreadRadius: -5,
-          ),
-        ],
+        borderRadius: BorderRadius.circular(2),
+        border: Border.all(color: accentColor.withValues(alpha: 0.3), width: 1.0),
       ),
       child: ClipRRect(
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(2),
         child: Stack(
           children: [
-            // Side Accents
             Positioned(
               left: 0, top: 0, bottom: 0,
-              child: Container(width: 4, color: accentColor),
+              child: Container(width: 3, color: accentColor),
             ),
             
             Padding(
@@ -785,55 +746,27 @@ class _CompletionBannerState extends ConsumerState<_CompletionBanner> with Singl
                   if (widget.isToday && _nextWorkoutIn > Duration.zero) ...[
                     Row(
                       children: [
-                        AnimatedBuilder(
-                          animation: _pulseCtrl,
-                          builder: (context, child) {
-                            return Container(
-                              width: 8,
-                              height: 8,
-                              decoration: BoxDecoration(
-                                shape: BoxShape.circle,
-                                color: accentColor.withValues(alpha: 0.3 + (0.7 * _pulseCtrl.value)),
-                                boxShadow: [
-                                  BoxShadow(
-                                    color: accentColor.withValues(alpha: 0.5 * _pulseCtrl.value),
-                                    blurRadius: 6,
-                                    spreadRadius: 2,
-                                  ),
-                                ],
-                              ),
-                            );
-                          },
-                        ),
-                        const SizedBox(width: 10),
                         Text(
-                          'NEXT DAILY QUEST INITIALIZING IN:',
-                          style: ShadowTextTheme.mono(10, color: ShadowColors.textSecondary),
+                          'SYSTEM COOLDOWN. NEXT QUEST IN:',
+                          style: ShadowTextTheme.mono(10, color: ShadowColors.textSecondary, weight: FontWeight.bold, letterSpacing: 1),
                         ),
                       ],
                     ),
                     const SizedBox(height: 12),
-                    Padding(
-                      padding: const EdgeInsets.only(left: 18),
-                      child: Text(
-                        _formatDuration(_nextWorkoutIn),
-                        style: ShadowTextTheme.mono(24, color: accentColor, weight: FontWeight.bold).copyWith(
-                          letterSpacing: 2,
-                          shadows: [
-                            Shadow(color: accentColor.withValues(alpha: 0.3), blurRadius: 10),
-                          ],
-                        ),
+                    Text(
+                      _formatDuration(_nextWorkoutIn),
+                      style: ShadowTextTheme.mono(28, color: accentColor, weight: FontWeight.bold).copyWith(
+                        letterSpacing: 2,
                       ),
                     ),
                   ] else ...[
-                    // Fallback for archived days or if timer is somehow zero
                     Row(
                       children: [
                         const Icon(Icons.verified_rounded, color: accentColor, size: 20),
                         const SizedBox(width: 12),
                         Text(
                           'DAILY QUEST COMPLETED',
-                          style: ShadowTextTheme.mono(14, color: accentColor, weight: FontWeight.bold),
+                          style: ShadowTextTheme.headline(16, color: accentColor, letterSpacing: 1),
                         ),
                       ],
                     ),
@@ -847,48 +780,6 @@ class _CompletionBannerState extends ConsumerState<_CompletionBanner> with Singl
     );
   }
 }
-
-class _RestDayBanner extends StatelessWidget {
-  final DateTime date;
-  const _RestDayBanner({required this.date});
-
-  @override
-  Widget build(BuildContext context) {
-    const accentColor = ShadowColors.amethyst;
-    
-    return Container(
-      width: double.infinity,
-      margin: const EdgeInsets.symmetric(horizontal: 16),
-      decoration: BoxDecoration(
-        color: accentColor.withValues(alpha: 0.05),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: accentColor.withValues(alpha: 0.3), width: 1.5),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.all(20),
-        child: Column(
-          children: [
-            const Icon(Icons.nightlight_round, color: accentColor, size: 32),
-            const SizedBox(height: 16),
-            Text(
-              '[SYSTEM NOTIFICATION] REST DAY',
-              style: ShadowTextTheme.mono(14, color: accentColor, weight: FontWeight.bold).copyWith(
-                letterSpacing: 1.5,
-              ),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              'No training protocols are scheduled for this cycle. Recovery is an essential part of growth.',
-              textAlign: TextAlign.center,
-              style: ShadowTextTheme.body(12, color: ShadowColors.textSecondary),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
 
 class _MonarchButton extends StatelessWidget {
   final String label;
@@ -910,18 +801,14 @@ class _MonarchButton extends StatelessWidget {
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
         decoration: BoxDecoration(
-          color: color.withValues(alpha: 0.1),
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: color.withValues(alpha: 0.4), width: 1.5),
-          boxShadow: isPrimary ? [
-            BoxShadow(
-              color: color.withValues(alpha: 0.1),
-              blurRadius: 10,
-              spreadRadius: 2,
-            )
-          ] : null,
+          color: isPrimary ? color.withValues(alpha: 0.1) : Colors.transparent,
+          borderRadius: BorderRadius.circular(2),
+          border: Border.all(
+            color: isPrimary ? color : ShadowColors.systemBorder, 
+            width: 1.0
+          ),
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
@@ -929,9 +816,9 @@ class _MonarchButton extends StatelessWidget {
             Icon(icon, color: color, size: 18),
             const SizedBox(width: 12),
             Text(
-              label,
+              label.toUpperCase(),
               style: ShadowTextTheme.mono(12, color: color, weight: FontWeight.bold).copyWith(
-                letterSpacing: 1.2,
+                letterSpacing: 2.0,
               ),
             ),
           ],
@@ -940,4 +827,3 @@ class _MonarchButton extends StatelessWidget {
     );
   }
 }
-

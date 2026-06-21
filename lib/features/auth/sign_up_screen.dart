@@ -64,105 +64,124 @@ class _SignUpScreenState extends ConsumerState<SignUpScreen> {
     final authState = ref.watch(authProvider);
 
     return Scaffold(
+      backgroundColor: ShadowColors.obsidian,
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: ShadowColors.amethystLight),
+          icon: const Icon(Icons.arrow_back_ios_new_rounded, color: ShadowColors.amethystLight, size: 20),
           onPressed: () => Navigator.of(context).pop(),
         ),
       ),
       extendBodyBehindAppBar: true,
-      body: Container(
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-            colors: [
-              ShadowColors.voidDark,
-              ShadowColors.obsidian,
-            ],
-          ),
-        ),
-        child: SafeArea(
-          child: Center(
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.symmetric(horizontal: 32),
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  const SizedBox(height: 32),
+      body: SafeArea(
+        child: Center(
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.symmetric(horizontal: 24),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                const SizedBox(height: 16),
 
-                  Text(
-                    'Hunter registration',
-                    style: ShadowTextTheme.headline(24, weight: FontWeight.w900).copyWith(
-                      letterSpacing: 2,
-                      color: ShadowColors.amethystLight,
-                    ),
-                    textAlign: TextAlign.center,
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    'Initializing system awakening...',
-                    style: ShadowTextTheme.mono(10, color: ShadowColors.textSecondary),
-                  ),
-                  const SizedBox(height: 48),
+                Text(
+                  'HUNTER REGISTRATION',
+                  style: ShadowTextTheme.headline(26, letterSpacing: 2, color: ShadowColors.amethystLight),
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 12),
+                Text(
+                  'INITIALIZING SYSTEM AWAKENING...',
+                  style: ShadowTextTheme.mono(10, color: ShadowColors.textSecondary, weight: FontWeight.bold, letterSpacing: 1.5),
+                ),
+                const SizedBox(height: 40),
 
-                  // Username Input
-                  TextField(
-                    controller: _usernameController,
-                    decoration: const InputDecoration(
-                      labelText: 'Hunter alias',
-                      prefixIcon: Icon(Icons.person_outline),
-                    ),
-                    style: ShadowTextTheme.mono(14),
-                  ),
-                  const SizedBox(height: 20),
-
-                  // Email Input
-                  TextField(
-                    controller: _emailController,
-                    keyboardType: TextInputType.emailAddress,
-                    decoration: const InputDecoration(
-                      labelText: 'Email address',
-                      prefixIcon: Icon(Icons.email_outlined),
-                    ),
-                    style: ShadowTextTheme.mono(14),
-                  ),
-                  const SizedBox(height: 20),
-
-                  // Password Input
-                  TextField(
-                    controller: _passwordController,
-                    obscureText: !_showPassword,
-                    decoration: InputDecoration(
-                      labelText: 'Password',
-                      prefixIcon: const Icon(Icons.lock_outline),
-                      suffixIcon: IconButton(
-                        icon: Icon(
-                          _showPassword ? Icons.visibility : Icons.visibility_off,
-                          color: ShadowColors.textSecondary,
-                        ),
-                        onPressed: () => setState(() => _showPassword = !_showPassword),
+                // Rigid Awakening Panel
+                Container(
+                  padding: const EdgeInsets.all(24),
+                  decoration: BoxDecoration(
+                    color: ShadowColors.surface,
+                    borderRadius: BorderRadius.circular(2),
+                    border: Border.all(color: ShadowColors.systemBorder, width: 1.0),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: 0.5),
+                        blurRadius: 20,
+                        offset: const Offset(0, 10),
                       ),
-                    ),
-                    style: ShadowTextTheme.mono(14),
+                    ],
                   ),
-                  const SizedBox(height: 40),
+                  child: Column(
+                    children: [
+                      // Username Input
+                      TextField(
+                        controller: _usernameController,
+                        decoration: const InputDecoration(
+                          labelText: 'HUNTER ALIAS',
+                          prefixIcon: Icon(Icons.person_outline_rounded, size: 20),
+                        ),
+                        style: ShadowTextTheme.mono(14),
+                      ),
+                      const SizedBox(height: 20),
 
-                  // Sign Up Button
-                  SizedBox(
-                    width: double.infinity,
-                    height: 56,
-                    child: ElevatedButton(
-                      onPressed: authState.isLoading ? null : _handleSignUp,
-                      child: authState.isLoading
-                          ? const CircularProgressIndicator(strokeWidth: 2)
-                          : const Text('Arise'),
-                    ),
+                      // Email Input
+                      TextField(
+                        controller: _emailController,
+                        keyboardType: TextInputType.emailAddress,
+                        decoration: const InputDecoration(
+                          labelText: 'VERIFICATION EMAIL',
+                          prefixIcon: Icon(Icons.alternate_email_rounded, size: 20),
+                        ),
+                        style: ShadowTextTheme.mono(14),
+                      ),
+                      const SizedBox(height: 20),
+
+                      // Password Input
+                      TextField(
+                        controller: _passwordController,
+                        obscureText: !_showPassword,
+                        decoration: InputDecoration(
+                          labelText: 'SECURITY KEY',
+                          prefixIcon: const Icon(Icons.vpn_key_outlined, size: 20),
+                          suffixIcon: IconButton(
+                            icon: Icon(
+                              _showPassword ? Icons.visibility : Icons.visibility_off,
+                              color: ShadowColors.textSecondary,
+                              size: 20,
+                            ),
+                            onPressed: () => setState(() => _showPassword = !_showPassword),
+                          ),
+                        ),
+                        style: ShadowTextTheme.mono(14),
+                      ),
+                      const SizedBox(height: 32),
+
+                      // Sign Up Button
+                      SizedBox(
+                        width: double.infinity,
+                        height: 54,
+                        child: ElevatedButton(
+                          onPressed: authState.isLoading ? null : _handleSignUp,
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: ShadowColors.amethyst,
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(2)),
+                          ),
+                          child: authState.isLoading
+                              ? const SizedBox(
+                                  width: 20,
+                                  height: 20,
+                                  child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                                )
+                              : Text(
+                                  'ARISE',
+                                  style: ShadowTextTheme.mono(16, weight: FontWeight.bold, letterSpacing: 8),
+                                ),
+                        ),
+                      ),
+                    ],
                   ),
-                ],
-              ),
+                ),
+                const SizedBox(height: 32),
+              ],
             ),
           ),
         ),

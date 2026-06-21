@@ -24,7 +24,11 @@ class Player {
   final bool isDead;
   final DateTime? lastPenaltyCheck;
   final DateTime? lastWorkoutDate;
+  final int consecutiveMissedDays;
   final bool isLoaded;
+
+  final Map<String, int> unlockedSkills;
+  final List<String> extractedShadows;
 
   Player({
     required this.id,
@@ -45,7 +49,10 @@ class Player {
     this.isDead = false,
     this.lastPenaltyCheck,
     this.lastWorkoutDate,
+    this.consecutiveMissedDays = 0,
     this.isLoaded = false,
+    this.unlockedSkills = const {},
+    this.extractedShadows = const [],
   });
 
   bool get isTrialAvailable => currentExp >= maxExp;
@@ -69,7 +76,10 @@ class Player {
     bool? isDead,
     DateTime? lastPenaltyCheck,
     DateTime? lastWorkoutDate,
+    int? consecutiveMissedDays,
     bool? isLoaded,
+    Map<String, int>? unlockedSkills,
+    List<String>? extractedShadows,
   }) {
     return Player(
       id: id ?? this.id,
@@ -90,7 +100,10 @@ class Player {
       isDead: isDead ?? this.isDead,
       lastPenaltyCheck: lastPenaltyCheck ?? this.lastPenaltyCheck,
       lastWorkoutDate: lastWorkoutDate ?? this.lastWorkoutDate,
+      consecutiveMissedDays: consecutiveMissedDays ?? this.consecutiveMissedDays,
       isLoaded: isLoaded ?? this.isLoaded,
+      unlockedSkills: unlockedSkills ?? this.unlockedSkills,
+      extractedShadows: extractedShadows ?? this.extractedShadows,
     );
   }
 
@@ -114,6 +127,9 @@ class Player {
       'is_dead': isDead,
       'last_penalty_check': lastPenaltyCheck?.toIso8601String(),
       'last_workout_date': lastWorkoutDate?.toIso8601String(),
+      'consecutive_missed_days': consecutiveMissedDays,
+      'unlocked_skills': unlockedSkills,
+      'extracted_shadows': extractedShadows,
     };
   }
 
@@ -147,6 +163,9 @@ class Player {
       lastWorkoutDate: json['last_workout_date'] != null
           ? DateTime.parse(json['last_workout_date'])
           : null,
+      consecutiveMissedDays: json['consecutive_missed_days'] ?? 0,
+      unlockedSkills: Map<String, int>.from(json['unlocked_skills'] ?? {}),
+      extractedShadows: List<String>.from(json['extracted_shadows'] ?? []),
     );
   }
 }

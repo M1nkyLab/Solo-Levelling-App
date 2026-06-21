@@ -1,10 +1,14 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:solo_levelling_app/features/quests/daily_quest.dart';
+import 'package:solo_levelling_app/features/player/player.dart';
 import 'package:solo_levelling_app/features/player/player_rank.dart';
 import 'package:solo_levelling_app/features/player/player_provider.dart';
 import 'package:solo_levelling_app/features/quests/quest_service.dart';
 import 'package:solo_levelling_app/features/quests/schedule_provider.dart';
+
+import 'dart:convert';
+import 'package:shared_preferences/shared_preferences.dart';
 
 // NEW: Expose a loading state to the UI
 final questLoadingProvider = StateProvider<bool>((ref) => true);
@@ -14,11 +18,32 @@ class QuestNotifier extends Notifier<List<DailyQuest>> {
   String? _userId;
   bool _mounted = true;
   int _lastFetchId = 0;
+  static const String _questsKey = 'daily_quests_state';
 
   @override
   List<DailyQuest> build() {
     ref.onDispose(() => _mounted = false);
+    _loadLocalQuests();
     return [];
+  }
+
+  Future<void> _loadLocalQuests() async {
+    final prefs = await SharedPreferences.getInstance();
+    final jsonString = prefs.getString(_questsKey);
+    if (jsonString != null && _mounted) {
+      try {
+        final List<dynamic> jsonList = json.decode(jsonString);
+        state = jsonList.map((j) => DailyQuest.fromJson(j)).toList();
+      } catch (e) {
+        debugPrint('Error loading local quests: $e');
+      }
+    }
+  }
+
+  Future<void> _saveLocalQuests() async {
+    final prefs = await SharedPreferences.getInstance();
+    final jsonString = json.encode(state.map((q) => q.toJson()).toList());
+    await prefs.setString(_questsKey, jsonString);
   }
 
   Future<void> fetchQuests(String userId, {DateTime? date, List<int>? localSchedule}) async {
@@ -28,21 +53,22 @@ class QuestNotifier extends Notifier<List<DailyQuest>> {
     final effectiveSchedule = localSchedule ?? ref.read(scheduleProvider).days;
     final targetDate = date ?? DateTime.now();
     final int weekday = targetDate.weekday;
+    final player = ref.read(playerProvider);
+    final isPenalty = player.trialStatus == TrialStatus.penalty;
 
     // --- INSTANT ARISE PROTOCOL ---
-    // If state is empty and it's a scheduled day, inject local fallbacks IMMEDIATELY
-    // before the async fetch starts. This guarantees they appear on screen.
-    if (state.isEmpty && effectiveSchedule.contains(weekday) && _mounted) {
-      debugPrint('QuestNotifier: [INSTANT ARISE] Injecting protocols before fetch.');
+    // If state is empty and it's a scheduled day (or penalty state), inject local fallbacks
+    if (state.isEmpty && (effectiveSchedule.contains(weekday) || isPenalty) && _mounted) {
+      debugPrint('QuestNotifier: [INSTANT ARISE] Injecting protocols before fetch. Penalty: $isPenalty');
       state = [
-        DailyQuest(id: 'pushups', title: 'Push-ups', baseReps: 20, targetDayOfWeek: weekday),
-        DailyQuest(id: 'situps', title: 'Sit-ups', baseReps: 20, targetDayOfWeek: weekday),
-        DailyQuest(id: 'squats', title: 'Squats', baseReps: 20, targetDayOfWeek: weekday),
-        DailyQuest(id: 'run', title: 'Running', baseReps: 20, targetDayOfWeek: weekday),
+        DailyQuest(id: 'pushups', title: 'Push-ups', baseReps: 20, targetDayOfWeek: weekday, isPenalty: isPenalty),
+        DailyQuest(id: 'situps', title: 'Sit-ups', baseReps: 20, targetDayOfWeek: weekday, isPenalty: isPenalty),
+        DailyQuest(id: 'squats', title: 'Squats', baseReps: 20, targetDayOfWeek: weekday, isPenalty: isPenalty),
+        DailyQuest(id: 'run', title: 'Running', baseReps: 20, targetDayOfWeek: weekday, isPenalty: isPenalty),
       ];
     }
     
-    // Only lock UI if we are STILL empty (unlikely after injection)
+    // Only lock UI if we are STILL empty
     if (state.isEmpty) {
       ref.read(questLoadingProvider.notifier).state = true;
     }
@@ -52,15 +78,19 @@ class QuestNotifier extends Notifier<List<DailyQuest>> {
       
       var quests = await _questService.getDailyQuests(userId, date: date, localSchedule: effectiveSchedule);
       
-      // Guard: discard stale fetches if a newer one started
+      // Guard: discard stale fetches
       if (fetchId != _lastFetchId || !_mounted) return;
+
+      // Map quests to penalty state if needed
+      if (isPenalty) {
+        quests = quests.map((q) => q.copyWith(isPenalty: true)).toList();
+      }
 
       debugPrint('QuestNotifier: [FETCH $fetchId] Completed. Got ${quests.length} quests.');
       state = quests;
     } catch (e, stack) {
       debugPrint('QuestNotifier: [FETCH $fetchId] Error: $e');
       debugPrint('QuestNotifier: StackTrace: $stack');
-      // If we had injected instant-arise fallbacks, keep them on error
     } finally {
       if (_mounted && fetchId == _lastFetchId) {
         ref.read(questLoadingProvider.notifier).state = false;
@@ -80,7 +110,7 @@ class QuestNotifier extends Notifier<List<DailyQuest>> {
     final quest = state[questIndex];
     final target = quest.getActualReps(level);
     
-    // System Mandate: Progress is permanent. No regression allowed.
+    // System Mandate: Progress is permanent.
     if (amount < 0) return;
 
     final newReps = (quest.currentReps + amount).clamp(0, target);
@@ -90,8 +120,9 @@ class QuestNotifier extends Notifier<List<DailyQuest>> {
     final newState = [...state];
     newState[questIndex] = quest.copyWith(currentReps: newReps, isCompleted: isCompleted);
     state = newState;
+    _saveLocalQuests();
 
-    // Remote update to Supabase
+    // Remote update
     try {
       await _questService.updateQuestProgress(_userId!, id, newReps.toInt(), isCompleted, date: date);
       
@@ -109,8 +140,6 @@ class QuestNotifier extends Notifier<List<DailyQuest>> {
 
   final Set<String> _rewardedDates = {};
 
-  // Called when all quests are done — only shows the popup.
-  // Actual XP + HP reward is deferred until the user presses "Continue".
   void _checkAllDone() {
     final quests = state;
     if (quests.isEmpty) return;
@@ -120,43 +149,51 @@ class QuestNotifier extends Notifier<List<DailyQuest>> {
       final selectedDate = ref.read(selectedDateProvider);
       final dateKey = "${selectedDate.year}-${selectedDate.month}-${selectedDate.day}";
 
-      // Guard: only trigger once per day
-      if (_rewardedDates.contains(dateKey)) return;
-      _rewardedDates.add(dateKey);
-
+      // Guard: only trigger once per day (unless it's a penalty)
       final player = ref.read(playerProvider);
+      final isPenalty = player.trialStatus == TrialStatus.penalty;
+      
+      if (!isPenalty && _rewardedDates.contains(dateKey)) return;
+      if (!isPenalty) _rewardedDates.add(dateKey);
 
-      // System Reward Scaling: level * base * rank multiplier
-      const int baseEssence = 25;
-      final int rankMultiplier = _getRankMultiplier(player.rank);
-      final int rewardXp = player.level * baseEssence * rankMultiplier;
+      // System Reward Scaling: 0 XP for penalty, else scaled XP
+      int rewardXp = 0;
+      if (!isPenalty) {
+        const int baseEssence = 25;
+        final int rankMultiplier = _getRankMultiplier(player.rank);
+        rewardXp = player.level * baseEssence * rankMultiplier;
+      }
 
-      // Store pending reward and show popup — do NOT award yet
+      // Store pending reward and show popup
       ref.read(_pendingQuestRewardProvider.notifier).state = rewardXp;
       ref.read(questCompletionOverlayProvider.notifier).state = rewardXp;
 
-      debugPrint('DAILY QUEST: Popup triggered. Pending reward: $rewardXp XP.');
+      // System Voice Alert removed
+
+      debugPrint('DAILY QUEST: Popup triggered. Penalty: $isPenalty. Reward: $rewardXp XP.');
     }
   }
 
   /// Called by the popup "Continue" button to finalize the reward.
   Future<void> claimQuestReward() async {
     final pendingXp = ref.read(_pendingQuestRewardProvider);
-    if (pendingXp == null) return;
+    final player = ref.read(playerProvider);
+    final isPenalty = player.trialStatus == TrialStatus.penalty;
 
-    // Clear pending reward immediately to prevent double-claim
+    // Clear pending reward
     ref.read(_pendingQuestRewardProvider.notifier).state = null;
     ref.read(questCompletionOverlayProvider.notifier).state = null;
 
-    debugPrint('DAILY QUEST CLAIM: Awarding $pendingXp XP + HP heal...');
+    if (isPenalty) {
+      debugPrint('PENALTY QUEST CLAIM: Restoring active status...');
+      ref.read(playerProvider.notifier).clearPenalty();
+    } else if (pendingXp != null) {
+      debugPrint('DAILY QUEST CLAIM: Awarding $pendingXp XP + HP heal...');
+      await ref.read(playerProvider.notifier).addXp(pendingXp);
+      await ref.read(playerProvider.notifier).healOnQuestComplete();
+    }
 
-    // 1. Award XP (triggers level-up logic in Supabase via add_player_xp RPC)
-    await ref.read(playerProvider.notifier).addXp(pendingXp);
-
-    // 2. Heal HP based on rank (vitality reward for completing the daily protocol)
-    await ref.read(playerProvider.notifier).healOnQuestComplete();
-
-    debugPrint('DAILY QUEST CLAIM: Complete.');
+    debugPrint('QUEST CLAIM: Complete.');
   }
 
   int _getRankMultiplier(PlayerRank rank) {

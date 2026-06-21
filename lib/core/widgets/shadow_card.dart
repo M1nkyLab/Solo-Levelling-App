@@ -5,21 +5,23 @@ import 'package:solo_levelling_app/core/theme/app_theme.dart';
 /// A reusable stat/info card with the Shadow Monarch glow aesthetic.
 /// Updated with Antigravity Design principles: Glassmorphism & Spatial Depth.
 class ShadowCard extends StatefulWidget {
-  final String title;
-  final String value;
-  final IconData icon;
+  final String? title;
+  final String? value;
+  final IconData? icon;
   final Color? accentColor;
   final VoidCallback? onTap;
   final Widget? badge;
+  final Widget? child;
 
   const ShadowCard({
     super.key,
-    required this.title,
-    required this.value,
-    required this.icon,
+    this.title,
+    this.value,
+    this.icon,
     this.accentColor,
     this.onTap,
     this.badge,
+    this.child,
   });
 
   @override
@@ -112,10 +114,10 @@ class _ShadowCardState extends State<ShadowCard>
               ),
               child: ClipRRect(
                 borderRadius: BorderRadius.circular(20),
-                child: _CardContent(
-                  title: widget.title,
-                  value: widget.value,
-                  icon: widget.icon,
+                child: widget.child ?? _CardContent(
+                  title: widget.title ?? '',
+                  value: widget.value ?? '',
+                  icon: widget.icon ?? Icons.help_outline,
                   accent: accent,
                   badge: widget.badge,
                 ),

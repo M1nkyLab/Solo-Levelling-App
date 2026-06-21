@@ -9,8 +9,9 @@ import 'package:solo_levelling_app/features/player/player_service.dart';
 
 class PlayerNotifier extends StateNotifier<Player> {
   final PlayerService _playerService = PlayerService();
+  final Ref ref;
 
-  PlayerNotifier() : super(Player(
+  PlayerNotifier(this.ref) : super(Player(
     id: '',
     userId: '',
     level: 1,
@@ -107,7 +108,7 @@ class PlayerNotifier extends StateNotifier<Player> {
   }
 
   /// Checks if a penalty should be applied based on missed scheduled days.
-  /// Returns the amount of EXP lost, or 0 if no penalty.
+  /// Returns the amount of damage taken, or 0 if no penalty.
   int checkSchedulePenalty(List<int> scheduledDays) {
     if (state.lastPenaltyCheck == null) {
       state = state.copyWith(lastPenaltyCheck: DateTime.now());
@@ -124,26 +125,41 @@ class PlayerNotifier extends StateNotifier<Player> {
 
     if (isAlreadyChecked) return 0;
 
-    // For this prototype, we check if "Yesterday" was a scheduled day
-    // and if the user skipped it.
-    final yesterday = now.subtract(const Duration(days: 1));
-    final isYesterdayScheduled = scheduledDays.contains(yesterday.weekday);
+    // Calculate missed scheduled days since lastCheck (excluding today)
+    int missedCount = 0;
+    DateTime checkDate = DateTime(lastCheck.year, lastCheck.month, lastCheck.day).add(const Duration(days: 1));
+    final today = DateTime(now.year, now.month, now.day);
 
-    if (isYesterdayScheduled) {
-      // 100 HP Vitality System: Apply rank-based damage
-      final damage = state.rank.hpLossOnMiss;
+    while (checkDate.isBefore(today)) {
+      if (scheduledDays.contains(checkDate.weekday)) {
+        missedCount++;
+      }
+      checkDate = checkDate.add(const Duration(days: 1));
+    }
+
+    if (missedCount > 0) {
+      // 100 HP Vitality System: -33% per missed day as per PRD
+      final damage = missedCount * 33;
       final newHp = (state.currentHp - damage).clamp(0, state.maxHp);
+      final newConsecutiveMissed = state.consecutiveMissedDays + missedCount;
       
       state = state.copyWith(
         currentHp: newHp,
+        consecutiveMissedDays: newConsecutiveMissed,
         lastPenaltyCheck: now,
+        trialStatus: TrialStatus.penalty, // Enter locked state
       );
 
-      // Check for death / demotion protocol
-      if (newHp == 0) {
+      // System Voice Alert removed
+
+      // Check for death / demotion protocol (3 missed days = 99 or 100 damage)
+      if (newHp == 0 || newConsecutiveMissed >= 3) {
         _triggerDemotionProtocol();
       }
 
+      // Sync to Supabase
+      _playerService.updateHp(state.id, state.currentHp);
+      
       return damage;
     }
 
@@ -153,20 +169,32 @@ class PlayerNotifier extends StateNotifier<Player> {
 
   void _triggerDemotionProtocol() {
     // 1. Demote to the max level of the PREVIOUS rank (The Rank Floor)
-    final floorLevel = state.rank.rankFloorLevel;
     final previousRankIndex = (PlayerRank.values.indexOf(state.rank) - 1).clamp(0, PlayerRank.values.length - 1);
     final previousRank = PlayerRank.values[previousRankIndex];
+    final floorLevel = previousRank.rankFloorLevel;
 
     state = state.copyWith(
       rank: previousRank,
       level: floorLevel,
       currentExp: 0,
-      trialStatus: TrialStatus.penalty, // Mark as penalty state
+      currentHp: 100, // Reset HP after demotion
+      consecutiveMissedDays: 0, // Reset streak
+      trialStatus: TrialStatus.idle, // Clear penalty state on demotion
     );
     
     debugPrint('DEMOTION PROTOCOL: Rank downgraded to ${previousRank.rankLabel}');
     // Sync with Supabase
     _playerService.applyPenalty(state);
+  }
+
+  /// Clears the penalty state and refills HP as per PRD.
+  void clearPenalty() {
+    state = state.copyWith(
+      currentHp: 100,
+      consecutiveMissedDays: 0,
+      trialStatus: TrialStatus.idle,
+    );
+    _playerService.updateHp(state.id, 100);
   }
 
   void completeTrial() {
@@ -188,7 +216,17 @@ class PlayerNotifier extends StateNotifier<Player> {
   }
 
   void failTrial() {
-    state = state.copyWith(trialStatus: TrialStatus.failed);
+    // PRD: 50% HP loss on failure
+    final damage = (state.maxHp * 0.5).round();
+    final newHp = (state.currentHp - damage).clamp(0, state.maxHp);
+    
+    state = state.copyWith(
+      currentHp: newHp,
+      trialStatus: TrialStatus.failed,
+    );
+    
+    // Sync to Supabase
+    _playerService.updateHp(state.id, newHp);
   }
 
   void resetTrial() {
@@ -207,11 +245,15 @@ class PlayerNotifier extends StateNotifier<Player> {
       debugPrint('addXp: Cannot award XP — player ID still unknown.');
       return;
     }
+    // Optimistic UI update
+    final optimisticExp = state.currentExp + amount;
+    state = state.copyWith(currentExp: optimisticExp);
 
     final response = await _playerService.addExperience(playerId, amount);
 
     if (response.success && response.data != null) {
-      state = response.data!;
+      final newState = response.data!;
+      state = newState;
     } else {
       debugPrint('Error adding XP to Supabase: ${response.error}');
     }
@@ -258,5 +300,5 @@ class PlayerNotifier extends StateNotifier<Player> {
 }
 
 final playerProvider = StateNotifierProvider<PlayerNotifier, Player>((ref) {
-  return PlayerNotifier();
+  return PlayerNotifier(ref);
 });

@@ -11,6 +11,7 @@ import 'package:solo_levelling_app/features/quests/schedule_provider.dart';
 import 'package:solo_levelling_app/features/quests/schedule_selection_screen.dart';
 import 'package:solo_levelling_app/features/player/player_provider.dart';
 import 'package:solo_levelling_app/features/quests/quest_provider.dart';
+import 'package:solo_levelling_app/core/logic/sync_service.dart';
 
 void main() async {
   final binding = WidgetsFlutterBinding.ensureInitialized();
@@ -47,6 +48,9 @@ class SoloLevellingApp extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    // Initialize services
+    ref.watch(syncServiceProvider);
+    
     final authState = ref.watch(authProvider);
     final scheduleState = ref.watch(scheduleProvider);
     final player = ref.watch(playerProvider);
@@ -78,7 +82,7 @@ class SoloLevellingApp extends ConsumerWidget {
     if (isAuthenticating || isSyncingData) {
       home = const SplashScreen();
     } else if (authState.isAuthenticated) {
-      if (scheduleState.isConfigured || !authState.needsScheduleSetup) {
+      if (!authState.needsScheduleSetup) {
         home = const DashboardScreen();
       } else {
         home = const ScheduleSelectionScreen();

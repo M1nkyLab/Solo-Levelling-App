@@ -3,14 +3,9 @@ enum PlayerRank { E, D, C, B, A, S }
 extension PlayerRankExtension on PlayerRank {
   // HP Vitality System values
   int get hpLossOnMiss {
-    switch (this) {
-      case PlayerRank.E: return 15;
-      case PlayerRank.D: return 20;
-      case PlayerRank.C: return 25;
-      case PlayerRank.B: return 30;
-      case PlayerRank.A: return 40;
-      case PlayerRank.S: return 50;
-    }
+    // PRD: 1 Day = -33%, 2 Days = -66%, 3 Days = -100%
+    // We return 33 here; the logic in PlayerNotifier will handle the accumulation
+    return 33;
   }
 
   int get hpGainOnCompletion {

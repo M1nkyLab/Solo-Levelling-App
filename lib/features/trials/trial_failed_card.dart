@@ -9,57 +9,68 @@ class TrialFailedCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.all(20),
+      padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
-        color: ShadowColors.glassAmethystCard,
-        borderRadius: BorderRadius.circular(20),
+        color: ShadowColors.surface,
+        borderRadius: BorderRadius.circular(2),
         border: Border.all(
-          color: ShadowColors.hpRed.withValues(alpha: 0.4),
-          width: 1.5,
+          color: ShadowColors.hpRed.withValues(alpha: 0.5),
+          width: 1.0,
         ),
         boxShadow: [
           BoxShadow(
-            color: ShadowColors.hpRed.withValues(alpha: 0.15),
-            blurRadius: 16,
+            color: Colors.black.withValues(alpha: 0.5),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
           ),
-          ...ShadowColors.weightlessShadow,
         ],
       ),
       child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             children: [
               const Icon(
                 Icons.warning_amber_rounded,
                 color: ShadowColors.hpRed,
-                size: 28,
+                size: 24,
               ),
               const SizedBox(width: 12),
               Expanded(
                 child: Text(
                   'SYSTEM NOTIFICATION',
-                  style: ShadowTextTheme.mono(14,
-                      color: ShadowColors.hpRed, weight: FontWeight.bold),
+                  style: ShadowTextTheme.mono(12,
+                      color: ShadowColors.hpRed, weight: FontWeight.bold, letterSpacing: 2),
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 16),
-          Text(
-            'Trial Failed. The System waits for you to grow stronger. Try Again.',
-            style: ShadowTextTheme.body(16, color: ShadowColors.textPrimary),
-          ),
           const SizedBox(height: 20),
+          Text(
+            'TRIAL FAILED.',
+            style: ShadowTextTheme.headline(18, color: ShadowColors.textPrimary),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'The System waits for you to grow stronger. Re-evaluation is required to ascend.',
+            style: ShadowTextTheme.body(14, color: ShadowColors.textSecondary),
+          ),
+          const SizedBox(height: 24),
           SizedBox(
             width: double.infinity,
+            height: 48,
             child: ElevatedButton(
               onPressed: onRetry,
               style: ElevatedButton.styleFrom(
-                backgroundColor: ShadowColors.hpRed.withValues(alpha: 0.2),
+                backgroundColor: ShadowColors.hpRed.withValues(alpha: 0.1),
                 foregroundColor: ShadowColors.hpRed,
                 side: const BorderSide(color: ShadowColors.hpRed, width: 1),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(2)),
               ),
-              child: const Text('RE-ENTER PORTAL'),
+              child: Text(
+                'RE-ENTER PORTAL',
+                style: ShadowTextTheme.mono(14, weight: FontWeight.bold, letterSpacing: 2),
+              ),
             ),
           ),
         ],

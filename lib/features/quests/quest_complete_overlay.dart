@@ -1,4 +1,3 @@
-import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:solo_levelling_app/core/theme/app_theme.dart';
@@ -32,7 +31,6 @@ class _QuestCompleteOverlayState extends State<QuestCompleteOverlay>
     with SingleTickerProviderStateMixin {
   late AnimationController _controller;
   late Animation<double> _scale;
-  late Animation<double> _blur;
   late Animation<double> _opacity;
   bool _claimed = false;
 
@@ -54,12 +52,6 @@ class _QuestCompleteOverlayState extends State<QuestCompleteOverlay>
               .chain(CurveTween(curve: Curves.easeInOut)),
           weight: 40),
     ]).animate(_controller);
-
-    _blur = Tween<double>(begin: 0.0, end: 18.0).animate(
-      CurvedAnimation(
-          parent: _controller,
-          curve: const Interval(0.0, 0.5, curve: Curves.easeOut)),
-    );
 
     _opacity = Tween<double>(begin: 0.0, end: 1.0).animate(
       CurvedAnimation(
@@ -94,14 +86,10 @@ class _QuestCompleteOverlayState extends State<QuestCompleteOverlay>
       builder: (context, child) {
         return Stack(
           children: [
-            // Blurred backdrop
+            // Darkened backdrop
             Positioned.fill(
-              child: BackdropFilter(
-                filter: ImageFilter.blur(
-                    sigmaX: _blur.value, sigmaY: _blur.value),
-                child: Container(
-                  color: Colors.black.withValues(alpha: 0.75 * _opacity.value),
-                ),
+              child: Container(
+                color: Colors.black.withValues(alpha: 0.9 * _opacity.value),
               ),
             ),
 
@@ -115,54 +103,46 @@ class _QuestCompleteOverlayState extends State<QuestCompleteOverlay>
                     padding: const EdgeInsets.symmetric(horizontal: 24.0),
                     child: Container(
                       decoration: BoxDecoration(
-                        color: ShadowColors.surfaceAlt.withValues(alpha: 0.95),
-                        borderRadius: BorderRadius.circular(24),
-                        border: Border.all(
-                          color: ShadowColors.amethyst.withValues(alpha: 0.5),
-                          width: 1.5,
-                        ),
-                        boxShadow: [
-                          BoxShadow(
-                            color: ShadowColors.amethyst.withValues(alpha: 0.25),
-                            blurRadius: 40,
-                            spreadRadius: 5,
-                          ),
-                        ],
+                        color: ShadowColors.amethyst.withValues(alpha: 0.3),
+                        borderRadius: BorderRadius.circular(2),
                       ),
-                      child: Padding(
-                        padding: const EdgeInsets.fromLTRB(28, 32, 28, 28),
+                      padding: const EdgeInsets.all(1),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 32),
+                        decoration: BoxDecoration(
+                          color: ShadowColors.obsidian,
+                          borderRadius: BorderRadius.circular(2),
+                        ),
                         child: Column(
                           mainAxisSize: MainAxisSize.min,
                           children: [
                             // System tag
                             Text(
-                              '[SYSTEM ALERT]',
-                              style: ShadowTextTheme.mono(11,
+                              '[ SYSTEM REWARD ]',
+                              style: ShadowTextTheme.mono(12,
                                   color: ShadowColors.amethystLight,
-                                  weight: FontWeight.bold),
+                                  weight: FontWeight.bold,
+                                  letterSpacing: 4),
                             ),
-                            const SizedBox(height: 16),
+                            const SizedBox(height: 24),
 
-                            // Checkmark icon
+                            // Checkmark icon - Sharp System Indicator
                             Container(
-                              width: 72,
-                              height: 72,
+                              width: 64,
+                              height: 64,
                               decoration: BoxDecoration(
-                                shape: BoxShape.circle,
-                                color: ShadowColors.success
-                                    .withValues(alpha: 0.12),
+                                color: ShadowColors.surfaceAlt,
                                 border: Border.all(
-                                    color: ShadowColors.success
-                                        .withValues(alpha: 0.5),
-                                    width: 2),
+                                    color: ShadowColors.success,
+                                    width: 1.5),
                               ),
                               child: const Icon(
                                 Icons.check_rounded,
                                 color: ShadowColors.success,
-                                size: 40,
+                                size: 32,
                               ),
                             ),
-                            const SizedBox(height: 20),
+                            const SizedBox(height: 24),
 
                             // Title
                             Text(
@@ -172,16 +152,10 @@ class _QuestCompleteOverlayState extends State<QuestCompleteOverlay>
                                       weight: FontWeight.w900)
                                   .copyWith(
                                 color: ShadowColors.textPrimary,
-                                shadows: [
-                                  Shadow(
-                                    color: ShadowColors.amethyst
-                                        .withValues(alpha: 0.6),
-                                    blurRadius: 20,
-                                  ),
-                                ],
+                                letterSpacing: 1,
                               ),
                             ),
-                            const SizedBox(height: 8),
+                            const SizedBox(height: 12),
                             Text(
                               'The System acknowledges your discipline.\nRewards will be applied upon confirmation.',
                               textAlign: TextAlign.center,
@@ -189,20 +163,17 @@ class _QuestCompleteOverlayState extends State<QuestCompleteOverlay>
                                   color: ShadowColors.textSecondary),
                             ),
 
-                            const SizedBox(height: 28),
+                            const SizedBox(height: 32),
 
                             // Rewards box
                             Container(
                               width: double.infinity,
-                              padding: const EdgeInsets.symmetric(
-                                  horizontal: 20, vertical: 16),
+                              padding: const EdgeInsets.all(20),
                               decoration: BoxDecoration(
-                                color: ShadowColors.voidDark
-                                    .withValues(alpha: 0.6),
-                                borderRadius: BorderRadius.circular(16),
+                                color: ShadowColors.surfaceAlt,
+                                borderRadius: BorderRadius.circular(2),
                                 border: Border.all(
-                                    color: ShadowColors.xpGold
-                                        .withValues(alpha: 0.3)),
+                                    color: ShadowColors.systemBorder),
                               ),
                               child: Column(
                                 children: [
@@ -210,27 +181,28 @@ class _QuestCompleteOverlayState extends State<QuestCompleteOverlay>
                                     'PENDING REWARDS',
                                     style: ShadowTextTheme.mono(10,
                                         color: ShadowColors.xpGold,
-                                        weight: FontWeight.bold),
+                                        weight: FontWeight.bold,
+                                        letterSpacing: 1),
                                   ),
-                                  const SizedBox(height: 14),
+                                  const SizedBox(height: 20),
                                   _rewardRow(
                                     icon: Icons.bolt_rounded,
                                     color: ShadowColors.xpGold,
-                                    label: 'Experience',
+                                    label: 'EXPERIENCE',
                                     value: '+${widget.expReward} EXP',
                                   ),
-                                  const SizedBox(height: 10),
+                                  const SizedBox(height: 12),
                                   _rewardRow(
                                     icon: Icons.favorite_rounded,
                                     color: ShadowColors.hpRed,
-                                    label: 'Vitality Restored',
+                                    label: 'VITALITY',
                                     value: '+${widget.hpHeal} HP',
                                   ),
                                 ],
                               ),
                             ),
 
-                            const SizedBox(height: 28),
+                            const SizedBox(height: 32),
 
                             // Continue button
                             GestureDetector(
@@ -238,31 +210,19 @@ class _QuestCompleteOverlayState extends State<QuestCompleteOverlay>
                               child: Container(
                                 width: double.infinity,
                                 padding:
-                                    const EdgeInsets.symmetric(vertical: 16),
+                                    const EdgeInsets.symmetric(vertical: 18),
                                 decoration: BoxDecoration(
-                                  gradient: LinearGradient(
-                                    colors: [
-                                      ShadowColors.amethyst,
-                                      ShadowColors.amethyst
-                                          .withValues(alpha: 0.7),
-                                    ],
-                                  ),
-                                  borderRadius: BorderRadius.circular(14),
-                                  boxShadow: [
-                                    BoxShadow(
-                                      color: ShadowColors.amethyst
-                                          .withValues(alpha: 0.4),
-                                      blurRadius: 16,
-                                      offset: const Offset(0, 4),
-                                    ),
-                                  ],
+                                  color: ShadowColors.amethyst.withValues(alpha: 0.1),
+                                  borderRadius: BorderRadius.circular(2),
+                                  border: Border.all(color: ShadowColors.amethyst, width: 1.5),
                                 ),
                                 child: Text(
                                   'CONTINUE',
                                   textAlign: TextAlign.center,
-                                  style: ShadowTextTheme.mono(15,
-                                      color: Colors.white,
-                                      weight: FontWeight.bold),
+                                  style: ShadowTextTheme.mono(16,
+                                      color: ShadowColors.amethystLight,
+                                      weight: FontWeight.bold,
+                                      letterSpacing: 6),
                                 ),
                               ),
                             ),
@@ -291,12 +251,12 @@ class _QuestCompleteOverlayState extends State<QuestCompleteOverlay>
       children: [
         Row(
           children: [
-            Icon(icon, color: color, size: 18),
-            const SizedBox(width: 8),
+            Icon(icon, color: color, size: 16),
+            const SizedBox(width: 10),
             Text(
               label,
-              style: ShadowTextTheme.mono(12,
-                  color: ShadowColors.textSecondary),
+              style: ShadowTextTheme.mono(10,
+                  color: ShadowColors.textDisabled, weight: FontWeight.bold),
             ),
           ],
         ),
@@ -333,7 +293,6 @@ class _RankUpOverlayState extends State<RankUpOverlay>
     with SingleTickerProviderStateMixin {
   late AnimationController _controller;
   late Animation<double> _scale;
-  late Animation<double> _blur;
   late Animation<double> _opacity;
 
   @override
@@ -341,25 +300,19 @@ class _RankUpOverlayState extends State<RankUpOverlay>
     super.initState();
     _controller = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 2000),
+      duration: const Duration(milliseconds: 1500),
     );
 
     _scale = TweenSequence<double>([
       TweenSequenceItem(
-          tween: Tween(begin: 0.0, end: 1.2)
+          tween: Tween(begin: 0.0, end: 1.1)
               .chain(CurveTween(curve: Curves.easeOutBack)),
           weight: 40),
       TweenSequenceItem(
-          tween: Tween(begin: 1.2, end: 1.0)
+          tween: Tween(begin: 1.1, end: 1.0)
               .chain(CurveTween(curve: Curves.easeInOut)),
           weight: 60),
     ]).animate(_controller);
-
-    _blur = Tween<double>(begin: 0.0, end: 20.0).animate(
-      CurvedAnimation(
-          parent: _controller,
-          curve: const Interval(0.0, 0.4, curve: Curves.easeOut)),
-    );
 
     _opacity = Tween<double>(begin: 0.0, end: 1.0).animate(
       CurvedAnimation(
@@ -393,13 +346,8 @@ class _RankUpOverlayState extends State<RankUpOverlay>
             return Stack(
               children: [
                 Positioned.fill(
-                  child: BackdropFilter(
-                    filter: ImageFilter.blur(
-                        sigmaX: _blur.value, sigmaY: _blur.value),
-                    child: Container(
-                      color:
-                          Colors.black.withValues(alpha: 0.8 * _opacity.value),
-                    ),
+                  child: Container(
+                    color: Colors.black.withValues(alpha: 0.9 * _opacity.value),
                   ),
                 ),
                 Center(
@@ -408,59 +356,70 @@ class _RankUpOverlayState extends State<RankUpOverlay>
                     child: FadeTransition(
                       opacity: _opacity,
                       child: Padding(
-                        padding:
-                            const EdgeInsets.symmetric(horizontal: 24.0),
-                        child: Column(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Text(
-                              '[SYSTEM ALERT]',
-                              style: ShadowTextTheme.mono(14,
-                                  color: ShadowColors.portalBlue,
-                                  weight: FontWeight.bold),
+                        padding: const EdgeInsets.symmetric(horizontal: 24.0),
+                        child: Container(
+                          decoration: BoxDecoration(
+                            color: ShadowColors.portalBlue.withValues(alpha: 0.3),
+                            borderRadius: BorderRadius.circular(2),
+                          ),
+                          padding: const EdgeInsets.all(1),
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 40),
+                            decoration: BoxDecoration(
+                              color: ShadowColors.obsidian,
+                              borderRadius: BorderRadius.circular(2),
                             ),
-                            const SizedBox(height: 12),
-                            Text(
-                              widget.oldRank.rankUpTitle.toUpperCase(),
-                              textAlign: TextAlign.center,
-                              style: ShadowTextTheme.headline(24,
-                                      weight: FontWeight.w900)
-                                  .copyWith(
-                                color: ShadowColors.textPrimary,
-                                shadows: [
-                                  Shadow(
-                                    color: ShadowColors.portalBlue
-                                        .withValues(alpha: 0.8),
-                                    blurRadius: 30,
+                            child: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Text(
+                                  '[ SYSTEM NOTIFICATION ]',
+                                  style: ShadowTextTheme.mono(12,
+                                      color: ShadowColors.portalBlue,
+                                      weight: FontWeight.bold,
+                                      letterSpacing: 4),
+                                ),
+                                const SizedBox(height: 24),
+                                Text(
+                                  widget.oldRank.rankUpTitle.toUpperCase(),
+                                  textAlign: TextAlign.center,
+                                  style: ShadowTextTheme.headline(22,
+                                          weight: FontWeight.w900)
+                                      .copyWith(
+                                    color: ShadowColors.textPrimary,
+                                    letterSpacing: 1,
                                   ),
-                                ],
-                              ),
+                                ),
+                                const SizedBox(height: 24),
+                                Text(
+                                  widget.oldRank.rankUpMessage,
+                                  textAlign: TextAlign.center,
+                                  style: ShadowTextTheme.body(14,
+                                      color: ShadowColors.textSecondary),
+                                ),
+                                const SizedBox(height: 40),
+                                _buildRankBadge(),
+                                const SizedBox(height: 40),
+                                _buildRankTransition(),
+                                const SizedBox(height: 20),
+                                Text(
+                                  '*${widget.oldRank.nextRankHint}*',
+                                  textAlign: TextAlign.center,
+                                  style: ShadowTextTheme.body(13,
+                                      color: ShadowColors.amethystLight,
+                                      italic: true),
+                                ),
+                                const SizedBox(height: 40),
+                                Text(
+                                  'Tap anywhere to continue',
+                                  style: ShadowTextTheme.mono(10,
+                                      color: ShadowColors.textDisabled,
+                                      weight: FontWeight.bold,
+                                      letterSpacing: 1),
+                                ),
+                              ],
                             ),
-                            const SizedBox(height: 24),
-                            Text(
-                              widget.oldRank.rankUpMessage,
-                              textAlign: TextAlign.center,
-                              style: ShadowTextTheme.body(16,
-                                  color: ShadowColors.textSecondary),
-                            ),
-                            const SizedBox(height: 40),
-                            _buildRankBadge(),
-                            const SizedBox(height: 40),
-                            _buildRankTransition(),
-                            const SizedBox(height: 12),
-                            Text(
-                              '*${widget.oldRank.nextRankHint}*',
-                              style: ShadowTextTheme.body(14,
-                                  color: ShadowColors.amethystLight,
-                                  italic: true),
-                            ),
-                            const SizedBox(height: 40),
-                            Text(
-                              'Tap anywhere to continue',
-                              style: ShadowTextTheme.mono(11,
-                                  color: ShadowColors.textDisabled),
-                            ),
-                          ],
+                          ),
                         ),
                       ),
                     ),
@@ -476,23 +435,20 @@ class _RankUpOverlayState extends State<RankUpOverlay>
 
   Widget _buildRankBadge() {
     return Container(
-      padding: const EdgeInsets.all(30),
+      width: 140,
+      height: 140,
       decoration: BoxDecoration(
-        shape: BoxShape.circle,
+        color: ShadowColors.surfaceAlt,
+        borderRadius: BorderRadius.circular(2),
         border: Border.all(
-            color: ShadowColors.portalBlue.withValues(alpha: 0.5), width: 2),
-        boxShadow: [
-          BoxShadow(
-            color: ShadowColors.portalBlue.withValues(alpha: 0.2),
-            blurRadius: 40,
-            spreadRadius: 10,
-          ),
-        ],
+            color: ShadowColors.portalBlue, width: 2),
       ),
-      child: Text(
-        widget.newRank.displayName,
-        style: ShadowTextTheme.headline(64, weight: FontWeight.w900).copyWith(
-          color: ShadowColors.portalBlue,
+      child: Center(
+        child: Text(
+          widget.newRank.displayName,
+          style: ShadowTextTheme.headline(72, weight: FontWeight.w900).copyWith(
+            color: ShadowColors.portalBlue,
+          ),
         ),
       ),
     );
@@ -503,25 +459,25 @@ class _RankUpOverlayState extends State<RankUpOverlay>
       children: [
         Text(
           'RANK UP!',
-          style: ShadowTextTheme.headline(20,
-              color: ShadowColors.success, weight: FontWeight.bold),
+          style: ShadowTextTheme.headline(18,
+              color: ShadowColors.success, weight: FontWeight.bold, letterSpacing: 2),
         ),
-        const SizedBox(height: 12),
+        const SizedBox(height: 16),
         Row(
           mainAxisSize: MainAxisSize.min,
           children: [
             Text(
               '[${widget.oldRank.displayName}-Class]',
-              style: ShadowTextTheme.mono(18,
-                  color: ShadowColors.textDisabled),
+              style: ShadowTextTheme.mono(16,
+                  color: ShadowColors.textDisabled, weight: FontWeight.bold),
             ),
-            const SizedBox(width: 20),
+            const SizedBox(width: 16),
             const Icon(Icons.arrow_forward_rounded,
-                color: ShadowColors.portalBlue, size: 24),
-            const SizedBox(width: 20),
+                color: ShadowColors.portalBlue, size: 20),
+            const SizedBox(width: 16),
             Text(
               '[${widget.newRank.displayName}-Class]',
-              style: ShadowTextTheme.mono(24,
+              style: ShadowTextTheme.headline(18,
                   color: ShadowColors.portalBlue, weight: FontWeight.bold),
             ),
           ],

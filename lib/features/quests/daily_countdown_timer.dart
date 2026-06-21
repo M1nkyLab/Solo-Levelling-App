@@ -123,8 +123,8 @@ class _DailyCountdownTimerState extends ConsumerState<DailyCountdownTimer> {
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
         decoration: BoxDecoration(
           color: color.withValues(alpha: 0.05),
-          borderRadius: BorderRadius.circular(8),
-          border: Border.all(color: color.withValues(alpha: 0.2)),
+          borderRadius: BorderRadius.circular(2),
+          border: Border.all(color: color.withValues(alpha: 0.3), width: 1.0),
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
@@ -151,13 +151,7 @@ class _DailyCountdownTimerState extends ConsumerState<DailyCountdownTimer> {
                     12,
                     color: color,
                     weight: FontWeight.bold,
-                  ).copyWith(
-                    shadows: [
-                      Shadow(
-                        color: color.withValues(alpha: 0.5),
-                        blurRadius: 8,
-                      ),
-                    ],
+                    letterSpacing: 1.5,
                   ),
                 );
               },

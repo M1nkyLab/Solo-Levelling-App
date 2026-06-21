@@ -54,99 +54,117 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     final authState = ref.watch(authProvider);
 
     return Scaffold(
-      body: Container(
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-            colors: [
-              ShadowColors.voidDark,
-              ShadowColors.obsidian,
-            ],
-          ),
-        ),
-        child: SafeArea(
-          child: Center(
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.symmetric(horizontal: 32),
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  const SizedBox(height: 32),
+      backgroundColor: ShadowColors.obsidian,
+      body: SafeArea(
+        child: Center(
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.symmetric(horizontal: 24),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                const SizedBox(height: 32),
 
-                  // Title
-                  Text(
-                    'System access',
-                    style: ShadowTextTheme.headline(24, weight: FontWeight.w900).copyWith(
-                      letterSpacing: 2,
-                      color: ShadowColors.amethystLight,
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    'Authentication required',
-                    style: ShadowTextTheme.mono(12, color: ShadowColors.textSecondary),
-                  ),
-                  const SizedBox(height: 48),
+                // Title Section
+                Text(
+                  'SYSTEM ACCESS',
+                  style: ShadowTextTheme.headline(28, letterSpacing: 3, color: ShadowColors.amethystLight),
+                ),
+                const SizedBox(height: 12),
+                Text(
+                  'AUTHENTICATION REQUIRED',
+                  style: ShadowTextTheme.mono(10, color: ShadowColors.textSecondary, weight: FontWeight.bold, letterSpacing: 2),
+                ),
+                const SizedBox(height: 48),
 
-                  // Email Input
-                  TextField(
-                    controller: _emailController,
-                    keyboardType: TextInputType.emailAddress,
-                    decoration: const InputDecoration(
-                      labelText: 'Email address',
-                      prefixIcon: Icon(Icons.email_outlined),
-                    ),
-                    style: ShadowTextTheme.mono(14),
-                  ),
-                  const SizedBox(height: 20),
-
-                  // Password Input
-                  TextField(
-                    controller: _passwordController,
-                    obscureText: !_showPassword,
-                    decoration: InputDecoration(
-                      labelText: 'Password',
-                      prefixIcon: const Icon(Icons.lock_outline),
-                      suffixIcon: IconButton(
-                        icon: Icon(
-                          _showPassword ? Icons.visibility : Icons.visibility_off,
-                          color: ShadowColors.textSecondary,
-                        ),
-                        onPressed: () => setState(() => _showPassword = !_showPassword),
+                // Rigid Login Panel
+                Container(
+                  padding: const EdgeInsets.all(24),
+                  decoration: BoxDecoration(
+                    color: ShadowColors.surface,
+                    borderRadius: BorderRadius.circular(2),
+                    border: Border.all(color: ShadowColors.systemBorder, width: 1.0),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: 0.5),
+                        blurRadius: 20,
+                        offset: const Offset(0, 10),
                       ),
-                    ),
-                    style: ShadowTextTheme.mono(14),
+                    ],
                   ),
-                  const SizedBox(height: 40),
+                  child: Column(
+                    children: [
+                      // Email Input
+                      TextField(
+                        controller: _emailController,
+                        keyboardType: TextInputType.emailAddress,
+                        decoration: const InputDecoration(
+                          labelText: 'HUNTER EMAIL',
+                          prefixIcon: Icon(Icons.alternate_email_rounded, size: 20),
+                        ),
+                        style: ShadowTextTheme.mono(14),
+                      ),
+                      const SizedBox(height: 20),
 
-                  // Login Button
-                  SizedBox(
-                    width: double.infinity,
-                    height: 56,
-                    child: ElevatedButton(
-                      onPressed: authState.isLoading ? null : _handleLogin,
-                      child: authState.isLoading
-                          ? const CircularProgressIndicator(strokeWidth: 2)
-                          : const Text('Enter system'),
-                    ),
-                  ),
-                  const SizedBox(height: 24),
+                      // Password Input
+                      TextField(
+                        controller: _passwordController,
+                        obscureText: !_showPassword,
+                        decoration: InputDecoration(
+                          labelText: 'ACCESS KEY',
+                          prefixIcon: const Icon(Icons.vpn_key_outlined, size: 20),
+                          suffixIcon: IconButton(
+                            icon: Icon(
+                              _showPassword ? Icons.visibility : Icons.visibility_off,
+                              color: ShadowColors.textSecondary,
+                              size: 20,
+                            ),
+                            onPressed: () => setState(() => _showPassword = !_showPassword),
+                          ),
+                        ),
+                        style: ShadowTextTheme.mono(14),
+                      ),
+                      const SizedBox(height: 32),
 
-                  // Sign Up Link
-                  TextButton(
-                    onPressed: () {
-                      Navigator.of(context).push(
-                        MaterialPageRoute(builder: (context) => const SignUpScreen()),
-                      );
-                    },
-                    child: Text(
-                      'New hunter? Awaken here',
-                      style: ShadowTextTheme.mono(12, color: ShadowColors.amethystLight),
-                    ),
+                      // Login Button
+                      SizedBox(
+                        width: double.infinity,
+                        height: 54,
+                        child: ElevatedButton(
+                          onPressed: authState.isLoading ? null : _handleLogin,
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: ShadowColors.amethyst,
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(2)),
+                          ),
+                          child: authState.isLoading
+                              ? const SizedBox(
+                                  width: 20,
+                                  height: 20,
+                                  child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                                )
+                              : Text(
+                                  'ENTER SYSTEM',
+                                  style: ShadowTextTheme.mono(14, weight: FontWeight.bold, letterSpacing: 2),
+                                ),
+                        ),
+                      ),
+                    ],
                   ),
-                ],
-              ),
+                ),
+                const SizedBox(height: 32),
+
+                // Sign Up Link
+                TextButton(
+                  onPressed: () {
+                    Navigator.of(context).push(
+                      MaterialPageRoute(builder: (context) => const SignUpScreen()),
+                    );
+                  },
+                  child: Text(
+                    'NEW HUNTER? INITIATE AWAKENING',
+                    style: ShadowTextTheme.mono(11, color: ShadowColors.amethystLight, weight: FontWeight.bold, letterSpacing: 1),
+                  ),
+                ),
+              ],
             ),
           ),
         ),

@@ -1,19 +1,18 @@
+
 import 'package:flutter/material.dart';
 import 'package:solo_levelling_app/core/theme/app_theme.dart';
-import 'package:solo_levelling_app/core/widgets/smoky_progress_bar.dart';
 
-/// A single exercise tracker row used inside the Daily Quest section.
-/// Updated with Antigravity Design: Glassmorphism & Weightlessness.
 class QuestTracker extends StatelessWidget {
   final String label;
   final IconData icon;
   final num completed;
   final num target;
-  final String unit;          // e.g. 'reps' or 'km'
-  final bool isDecimal;       // true for run (0.5 km steps)
-  final Color? accentColor;    // Optional override for the theme color
+  final String unit;          
+  final bool isDecimal;       
+  final Color? accentColor;    
   final VoidCallback onAdd;
   final VoidCallback? onLongAdd;
+  final int index; // Added to show MODULE_0X
 
   const QuestTracker({
     super.key,
@@ -26,166 +25,101 @@ class QuestTracker extends StatelessWidget {
     this.unit = 'reps',
     this.isDecimal = false,
     this.accentColor,
+    this.index = 0,
   });
-
-  double get _progress =>
-      target == 0 ? 0 : (completed / target).clamp(0.0, 1.0);
 
   bool get _isDone => completed >= target;
 
-  Color get _resolvedAccentColor {
-    if (accentColor != null) return accentColor!;
-    if (_isDone) return ShadowColors.success;
-    if (_progress > 0.6) return ShadowColors.amethystLight;
-    return ShadowColors.amethyst;
-  }
-
   @override
   Widget build(BuildContext context) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 12),
-      decoration: BoxDecoration(
-        color: ShadowColors.glassAmethystCard,
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(
-          color: _isDone && accentColor == null
-              ? ShadowColors.success.withValues(alpha: 0.4)
-              : _resolvedAccentColor.withValues(alpha: 0.18),
-          width: 1.2,
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.35),
-            blurRadius: 12,
-            offset: const Offset(0, 6),
+    final statusColor = _isDone ? ShadowColors.xpGold : ShadowColors.amethyst;
+    final moduleIndex = (index + 1).toString().padLeft(2, '0');
+    final statusText = _isDone ? 'DONE' : 'ACTIVE';
+
+    return GestureDetector(
+      onTap: onAdd,
+      onLongPress: onLongAdd,
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 16),
+        decoration: BoxDecoration(
+          color: ShadowColors.surface,
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(
+            color: statusColor.withValues(alpha: 0.5),
+            width: 1.5,
           ),
-          if (_isDone && accentColor == null)
+          boxShadow: [
             BoxShadow(
-              color: ShadowColors.success.withValues(alpha: 0.08),
-              blurRadius: 20,
+              color: statusColor.withValues(alpha: 0.2),
+              blurRadius: 15,
+              spreadRadius: 1,
             ),
-        ],
-      ),
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Container(
-                width: 40,
-                height: 40,
-                decoration: BoxDecoration(
-                  color: ShadowColors.surfaceAlt,
-                  borderRadius: BorderRadius.circular(10),
-                  border: Border.all(
-                      color: _resolvedAccentColor.withValues(alpha: 0.4), width: 1),
+          ],
+        ),
+        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
+        child: Row(
+          children: [
+            // Checkmark Icon
+            Container(
+              width: 24,
+              height: 24,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                border: Border.all(
+                  color: statusColor,
+                  width: 1.5,
                 ),
-                child: Icon(icon, color: _resolvedAccentColor, size: 20),
               ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+              child: Center(
+                child: Icon(
+                  _isDone ? Icons.check : Icons.circle,
+                  size: 14,
+                  color: _isDone ? statusColor : Colors.transparent,
+                ),
+              ),
+            ),
+            const SizedBox(width: 16),
+            
+            // Text Info
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'MODULE_$moduleIndex // $statusText',
+                    style: ShadowTextTheme.mono(10, color: ShadowColors.textDisabled, weight: FontWeight.bold),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    label.toUpperCase(),
+                    style: ShadowTextTheme.headline(20, color: ShadowColors.textPrimary),
+                  ),
+                ],
+              ),
+            ),
+
+            // Progress
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: [
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.baseline,
+                  textBaseline: TextBaseline.alphabetic,
                   children: [
                     Text(
-                      label.toUpperCase(),
-                      style: ShadowTextTheme.mono(11,
-                          color: ShadowColors.textSecondary,
-                          weight: FontWeight.bold),
+                      isDecimal ? (completed / 10).toStringAsFixed(1) : completed.toInt().toString(),
+                      style: ShadowTextTheme.headline(28, color: ShadowColors.textPrimary),
                     ),
-                    const SizedBox(height: 2),
+                    const SizedBox(width: 4),
                     Text(
-                      isDecimal
-                          ? '${(completed / 10).toStringAsFixed(1)} / ${(target / 10).toStringAsFixed(1)} $unit'
-                          : '${completed.toInt()} / ${target.toInt()} $unit',
-                      style: ShadowTextTheme.mono(15,
-                          color: _isDone && accentColor == null
-                              ? ShadowColors.success
-                              : ShadowColors.textPrimary,
-                          weight: FontWeight.bold),
+                      '/ ${isDecimal ? (target / 10).toStringAsFixed(1) : target.toInt()} ${unit.toUpperCase()}',
+                      style: ShadowTextTheme.mono(10, color: ShadowColors.textDisabled, weight: FontWeight.bold),
                     ),
                   ],
                 ),
-              ),
-              const SizedBox(width: 8),
-              _ControlButton(
-                icon: _isDone ? Icons.check_rounded : Icons.add_rounded,
-                onTap: _isDone ? () {} : onAdd,
-                onLongPress: _isDone ? null : onLongAdd,
-                enabled: !_isDone,
-                isDone: _isDone,
-                color: _isDone && accentColor == null ? ShadowColors.success : _resolvedAccentColor,
-                isPrimary: true,
-              ),
-            ],
-          ),
-          const SizedBox(height: 12),
-          SmokyProgressBar(
-            currentValue: completed.toInt(),
-            maxValue: target.toInt(),
-            color: _resolvedAccentColor,
-            height: 8,
-            particleCount: 18,
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _ControlButton extends StatelessWidget {
-  final IconData icon;
-  final VoidCallback onTap;
-  final VoidCallback? onLongPress;
-  final bool enabled;
-  final bool isDone;
-  final Color color;
-  final bool isPrimary;
-
-  const _ControlButton({
-    required this.icon,
-    required this.onTap,
-    this.onLongPress,
-    required this.color,
-    this.enabled = true,
-    this.isDone = false,
-    this.isPrimary = false,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final bool active = enabled || isDone;
-    return GestureDetector(
-      onTap: enabled ? onTap : null,
-      onLongPress: enabled ? onLongPress : null,
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 150),
-        width: 36,
-        height: 36,
-        decoration: BoxDecoration(
-          color: ShadowColors.surfaceAlt,
-          borderRadius: BorderRadius.circular(10),
-          border: Border.all(
-            color: active
-                ? (isPrimary ? color : color.withValues(alpha: 0.4))
-                : ShadowColors.textDisabled.withValues(alpha: 0.2),
-            width: isPrimary ? 1.5 : 1,
-          ),
-          boxShadow: isPrimary && active
-              ? [
-                  BoxShadow(
-                    color: color.withValues(alpha: 0.2),
-                    blurRadius: 6,
-                    spreadRadius: 0,
-                  )
-                ]
-              : null,
-        ),
-        child: Icon(
-          icon,
-          size: 18,
-          color: active ? color : ShadowColors.textDisabled,
+              ],
+            ),
+          ],
         ),
       ),
     );

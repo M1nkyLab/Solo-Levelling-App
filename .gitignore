@@ -51,3 +51,7 @@ app.*.map.json
 .env
 .env.*
 
+# Documentation
+docs/PRD.md
+docs/UI_UX_DESIGN.md
+

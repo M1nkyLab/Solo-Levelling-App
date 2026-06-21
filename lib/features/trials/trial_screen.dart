@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -32,6 +31,9 @@ class _TrialScreenState extends ConsumerState<TrialScreen> {
   };
 
   late Map<String, int> _targets;
+  late int _totalBossHp;
+  DateTime _lastProgressTime = DateTime.now();
+  bool _showSystemWarning = false;
 
   bool _isQuestComplete = false;
   late PlayerRank _oldRank;
@@ -55,6 +57,8 @@ class _TrialScreenState extends ConsumerState<TrialScreen> {
       'run': reqs.running,
     };
 
+    _totalBossHp = _targets.values.reduce((a, b) => a + b);
+
     final currentRankIndex = PlayerRank.values.indexOf(currentRank);
     _newRank = currentRankIndex < PlayerRank.values.length - 1
         ? PlayerRank.values[currentRankIndex + 1]
@@ -66,6 +70,15 @@ class _TrialScreenState extends ConsumerState<TrialScreen> {
       if (_secondsRemaining > 0) {
         setState(() {
           _secondsRemaining--;
+          
+          // Check for intensity warning (no progress for 30s)
+          final inactiveDuration = DateTime.now().difference(_lastProgressTime).inSeconds;
+          if (inactiveDuration >= 30 && !_showSystemWarning) {
+            _showSystemWarning = true;
+            HapticFeedback.vibrate();
+          } else if (inactiveDuration < 30 && _showSystemWarning) {
+            _showSystemWarning = false;
+          }
         });
       } else {
         _timer.cancel();
@@ -74,22 +87,13 @@ class _TrialScreenState extends ConsumerState<TrialScreen> {
     });
   }
 
-  @override
-  void dispose() {
-    _timer.cancel();
-    super.dispose();
-  }
-
-  void _handleTrialEnd({required bool failed}) {
-    if (failed) {
-      ref.read(playerProvider.notifier).failTrial();
-      if (mounted) Navigator.of(context).pop();
-    } else {
-      _timer.cancel();
-      setState(() {
-        _isQuestComplete = true;
-      });
-    }
+  void _updateProgress(String id, int val) {
+    setState(() {
+      _progress[id] = val;
+      _lastProgressTime = DateTime.now();
+      _showSystemWarning = false;
+    });
+    _checkCompletion();
   }
 
   void _checkCompletion() {
@@ -101,107 +105,20 @@ class _TrialScreenState extends ConsumerState<TrialScreen> {
     }
   }
 
-  void _showGiveUpWarning() {
-    HapticFeedback.heavyImpact();
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (context) => BackdropFilter(
-        filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
-        child: Dialog(
-          backgroundColor: Colors.transparent,
-          child: Container(
-            padding: const EdgeInsets.all(24),
-            decoration: BoxDecoration(
-              color: ShadowColors.obsidian.withValues(alpha: 0.8),
-              borderRadius: BorderRadius.circular(20),
-              border: Border.all(color: ShadowColors.hpRed, width: 2),
-            ),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                const Icon(Icons.warning_rounded, color: ShadowColors.hpRed, size: 64),
-                const SizedBox(height: 16),
-                Text(
-                  'WARNING',
-                  style: ShadowTextTheme.headline(24, weight: FontWeight.bold)
-                      .copyWith(color: ShadowColors.hpRed),
-                ),
-                const SizedBox(height: 16),
-                Text(
-                  'Abandoning the trial will result in severe penalties. Do you wish to flee?',
-                  style: ShadowTextTheme.body(16, color: ShadowColors.textPrimary),
-                  textAlign: TextAlign.center,
-                ),
-                const SizedBox(height: 32),
-                Row(
-                  children: [
-                    Expanded(
-                      child: OutlinedButton(
-                        onPressed: () => Navigator.of(context).pop(),
-                        style: OutlinedButton.styleFrom(
-                          foregroundColor: ShadowColors.textSecondary,
-                          side: const BorderSide(color: ShadowColors.textDisabled),
-                        ),
-                        child: const Text('CONTINUE FIGHTING'),
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: ElevatedButton(
-                        onPressed: () {
-                          Navigator.of(context).pop(); // Close dialog
-                          _handleTrialEnd(failed: true);
-                        },
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: ShadowColors.hpRed,
-                          foregroundColor: ShadowColors.textPrimary,
-                        ),
-                        child: const Text('FLEE'),
-                      ),
-                    ),
-                  ],
-                ),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-
-  String _formatTime(int seconds) {
-    final m = (seconds ~/ 60).toString().padLeft(2, '0');
-    final s = (seconds % 60).toString().padLeft(2, '0');
-    return '$m:$s';
-  }
-
   @override
   Widget build(BuildContext context) {
+    final int currentTotalProgress = _progress.values.reduce((a, b) => a + b);
+    final double bossHpPercent = ((_totalBossHp - currentTotalProgress) / _totalBossHp).clamp(0.0, 1.0);
+
     return Scaffold(
       backgroundColor: ShadowColors.obsidian,
       body: Stack(
         children: [
-          // Ambient Red Glow
-          Positioned.fill(
-            child: Container(
-              decoration: BoxDecoration(
-                gradient: RadialGradient(
-                  center: Alignment.topCenter,
-                  radius: 1.2,
-                  colors: [
-                    ShadowColors.hpRed.withValues(alpha: 0.15),
-                    Colors.transparent,
-                  ],
-                ),
-              ),
-            ),
-          ),
-          
           SafeArea(
             child: Column(
               children: [
-                _buildTrialHeader(),
+                _buildTrialHeader(bossHpPercent),
+                if (_showSystemWarning) _buildIntensityWarning(),
                 Expanded(
                   child: ListView(
                     padding: const EdgeInsets.all(16),
@@ -211,10 +128,7 @@ class _TrialScreenState extends ConsumerState<TrialScreen> {
                       EclipseShadowTracker(
                         targetReps: _targets['pushups']!,
                         accentColor: ShadowColors.hpRed,
-                        onRepRegistered: (val) {
-                          setState(() => _progress['pushups'] = val);
-                          _checkCompletion();
-                        },
+                        onRepRegistered: (val) => _updateProgress('pushups', val),
                       ),
                       const SizedBox(height: 24),
 
@@ -222,10 +136,7 @@ class _TrialScreenState extends ConsumerState<TrialScreen> {
                       ProximityHoverTracker(
                         targetReps: _targets['situps']!,
                         accentColor: ShadowColors.hpRed,
-                        onRepRegistered: (val) {
-                          setState(() => _progress['situps'] = val);
-                          _checkCompletion();
-                        },
+                        onRepRegistered: (val) => _updateProgress('situps', val),
                       ),
                       const SizedBox(height: 24),
                       
@@ -234,10 +145,7 @@ class _TrialScreenState extends ConsumerState<TrialScreen> {
                         type: PassiveQuestType.squats,
                         targetReps: _targets['squats']!,
                         accentColor: ShadowColors.hpRed,
-                        onComplete: () {
-                          setState(() => _progress['squats'] = _targets['squats']!);
-                          _checkCompletion();
-                        },
+                        onComplete: () => _updateProgress('squats', _targets['squats']!),
                       ),
                       const SizedBox(height: 24),
                       
@@ -250,14 +158,8 @@ class _TrialScreenState extends ConsumerState<TrialScreen> {
                         unit: 'km',
                         isDecimal: true,
                         accentColor: ShadowColors.hpRed,
-                        onAdd: () {
-                          setState(() => _progress['run'] = (_progress['run']! + 1).clamp(0, _targets['run']!));
-                          _checkCompletion();
-                        },
-                        onLongAdd: () {
-                          setState(() => _progress['run'] = (_progress['run']! + 10).clamp(0, _targets['run']!));
-                          _checkCompletion();
-                        },
+                        onAdd: () => _updateProgress('run', (_progress['run']! + 1).clamp(0, _targets['run']!)),
+                        onLongAdd: () => _updateProgress('run', (_progress['run']! + 10).clamp(0, _targets['run']!)),
                       ),
                     ],
                   ),
@@ -281,34 +183,132 @@ class _TrialScreenState extends ConsumerState<TrialScreen> {
     );
   }
 
-  Widget _buildTrialHeader() {
+  Widget _buildTrialHeader(double bossHpPercent) {
     return Container(
       padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 16),
       child: Column(
         children: [
           Text(
             'RANK UP TRIAL',
-            style: ShadowTextTheme.headline(14, weight: FontWeight.bold)
+            style: ShadowTextTheme.headline(16, weight: FontWeight.bold)
                 .copyWith(color: ShadowColors.hpRed, letterSpacing: 4),
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 16),
+          _buildBossHpBar(bossHpPercent),
+          const SizedBox(height: 16),
           Text(
             _formatTime(_secondsRemaining),
-            style: ShadowTextTheme.mono(48, weight: FontWeight.bold)
-                .copyWith(color: ShadowColors.hpRed),
-          ),
-          const SizedBox(height: 4),
-          Container(
-            height: 2,
-            width: 100,
-            decoration: BoxDecoration(
-              color: ShadowColors.hpRed,
-              boxShadow: [
-                BoxShadow(color: ShadowColors.hpRed.withValues(alpha: 0.5), blurRadius: 10),
-              ],
-            ),
+            style: ShadowTextTheme.mono(32, weight: FontWeight.bold)
+                .copyWith(color: ShadowColors.hpRed, letterSpacing: 2),
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildBossHpBar(double percent) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text(
+              'DUNGEON BOSS',
+              style: ShadowTextTheme.mono(10, color: ShadowColors.hpRed, weight: FontWeight.bold),
+            ),
+            Text(
+              '${(percent * 100).toInt()}%',
+              style: ShadowTextTheme.mono(10, color: ShadowColors.hpRed, weight: FontWeight.bold),
+            ),
+          ],
+        ),
+        const SizedBox(height: 6),
+        Container(
+          height: 12,
+          width: double.infinity,
+          decoration: BoxDecoration(
+            color: ShadowColors.hpRed.withValues(alpha: 0.1),
+            border: Border.all(color: ShadowColors.hpRed.withValues(alpha: 0.5), width: 1),
+          ),
+          child: FractionallySizedBox(
+            alignment: Alignment.centerLeft,
+            widthFactor: percent,
+            child: Container(
+              decoration: const BoxDecoration(
+                color: ShadowColors.hpRed,
+                boxShadow: [
+                  BoxShadow(color: ShadowColors.hpRed, blurRadius: 10, spreadRadius: -2),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  void _handleTrialEnd({required bool failed}) {
+    _timer.cancel();
+    if (failed) {
+      ref.read(playerProvider.notifier).failTrial();
+      Navigator.of(context).pop();
+    } else {
+      setState(() {
+        _isQuestComplete = true;
+      });
+      HapticFeedback.heavyImpact();
+    }
+  }
+
+  String _formatTime(int seconds) {
+    final int mins = seconds ~/ 60;
+    final int secs = seconds % 60;
+    return '${mins.toString().padLeft(2, '0')}:${secs.toString().padLeft(2, '0')}';
+  }
+
+  void _showGiveUpWarning() {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: ShadowColors.surface,
+        title: Text('ABANDON TRIAL?', style: ShadowTextTheme.headline(18, color: ShadowColors.hpRed)),
+        content: Text('Abandoning the trial will result in immediate failure and penalty.', 
+          style: ShadowTextTheme.body(14)),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text('RESUME', style: ShadowTextTheme.mono(14, color: ShadowColors.textPrimary)),
+          ),
+          TextButton(
+            onPressed: () {
+              Navigator.pop(context);
+              _handleTrialEnd(failed: true);
+            },
+            child: Text('ABANDON', style: ShadowTextTheme.mono(14, color: ShadowColors.hpRed)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildIntensityWarning() {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(vertical: 8),
+      color: ShadowColors.hpRed.withValues(alpha: 0.2),
+      child: Center(
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(Icons.warning_amber_rounded, color: ShadowColors.hpRed, size: 16),
+            const SizedBox(width: 8),
+            Text(
+              'SYSTEM WARNING: INTENSITY DROPPING',
+              style: ShadowTextTheme.mono(10, color: ShadowColors.hpRed, weight: FontWeight.bold, letterSpacing: 1),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -319,9 +319,9 @@ class _TrialScreenState extends ConsumerState<TrialScreen> {
       child: TextButton(
         onPressed: _showGiveUpWarning,
         child: Text(
-          'GIVE UP',
-          style: ShadowTextTheme.mono(14, color: ShadowColors.textDisabled)
-              .copyWith(decoration: TextDecoration.underline),
+          'ABANDON PROTOCOL',
+          style: ShadowTextTheme.mono(12, color: ShadowColors.textDisabled, weight: FontWeight.bold)
+              .copyWith(letterSpacing: 1),
         ),
       ),
     );

@@ -7,6 +7,7 @@ class DailyQuest {
   final int currentReps;
   final int targetDayOfWeek; // 1 = Monday, ..., 7 = Sunday
   final bool isCompleted;
+  final bool isPenalty;
 
   DailyQuest({
     required this.id,
@@ -15,6 +16,7 @@ class DailyQuest {
     this.currentReps = 0,
     required this.targetDayOfWeek,
     this.isCompleted = false,
+    this.isPenalty = false,
   });
 
   // Toggles completion status
@@ -25,6 +27,7 @@ class DailyQuest {
     int? currentReps,
     int? targetDayOfWeek,
     bool? isCompleted,
+    bool? isPenalty,
   }) {
     return DailyQuest(
       id: id ?? this.id,
@@ -33,12 +36,14 @@ class DailyQuest {
       currentReps: currentReps ?? this.currentReps,
       targetDayOfWeek: targetDayOfWeek ?? this.targetDayOfWeek,
       isCompleted: isCompleted ?? this.isCompleted,
+      isPenalty: isPenalty ?? this.isPenalty,
     );
   }
 
   // The System calculates the actual reps needed for the day based on level
   int getActualReps(int level) {
-    return SystemLogic.calculateRequirement(id, level);
+    final int target = SystemLogic.calculateRequirement(id, level);
+    return isPenalty ? (target * 1.5).round() : target;
   }
 
   Map<String, dynamic> toJson() {

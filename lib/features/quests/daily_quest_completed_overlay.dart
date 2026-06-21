@@ -88,30 +88,16 @@ class _DailyQuestCompletedOverlayState extends State<DailyQuestCompletedOverlay>
                     scale: _scale,
                     child: Container(
                       width: MediaQuery.of(context).size.width * 0.85,
-                      padding: const EdgeInsets.all(2),
+                      padding: const EdgeInsets.all(1),
                       decoration: BoxDecoration(
-                        gradient: LinearGradient(
-                          begin: Alignment.topLeft,
-                          end: Alignment.bottomRight,
-                          colors: [
-                            ShadowColors.success.withValues(alpha: 0.5),
-                            ShadowColors.success.withValues(alpha: 0.1),
-                          ],
-                        ),
-                        borderRadius: BorderRadius.circular(24),
-                        boxShadow: [
-                          BoxShadow(
-                            color: ShadowColors.success.withValues(alpha: 0.2),
-                            blurRadius: 40,
-                            spreadRadius: 5,
-                          ),
-                        ],
+                        color: ShadowColors.success.withValues(alpha: 0.3),
+                        borderRadius: BorderRadius.circular(2),
                       ),
                       child: Container(
                         padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 32),
                         decoration: BoxDecoration(
                           color: ShadowColors.obsidian,
-                          borderRadius: BorderRadius.circular(22),
+                          borderRadius: BorderRadius.circular(2),
                         ),
                         child: Column(
                           mainAxisSize: MainAxisSize.min,
@@ -122,16 +108,17 @@ class _DailyQuestCompletedOverlayState extends State<DailyQuestCompletedOverlay>
                               style: ShadowTextTheme.mono(14, 
                                 color: ShadowColors.success, 
                                 weight: FontWeight.bold,
-                                letterSpacing: 3,
+                                letterSpacing: 4,
                               ),
                             ),
-                            const SizedBox(height: 16),
+                            const SizedBox(height: 20),
                             Text(
                               'DAILY QUEST COMPLETED',
                               textAlign: TextAlign.center,
-                              style: ShadowTextTheme.headline(24, weight: FontWeight.w900).copyWith(
+                              style: ShadowTextTheme.headline(22, weight: FontWeight.w900).copyWith(
                                 color: ShadowColors.textPrimary,
                                 height: 1.1,
+                                letterSpacing: 1.5,
                               ),
                             ),
                             
@@ -162,23 +149,19 @@ class _DailyQuestCompletedOverlayState extends State<DailyQuestCompletedOverlay>
 
   Widget _buildInfoRow(String label, String value, Color color) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
       decoration: BoxDecoration(
-        color: ShadowColors.surfaceAlt.withValues(alpha: 0.5),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: ShadowColors.glassBorder.withValues(alpha: 0.1)),
+        color: ShadowColors.surfaceAlt,
+        borderRadius: BorderRadius.circular(2),
+        border: Border.all(color: ShadowColors.systemBorder),
       ),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Text(label, style: ShadowTextTheme.mono(10, color: ShadowColors.textDisabled)),
+          Text(label, style: ShadowTextTheme.mono(10, color: ShadowColors.textDisabled, weight: FontWeight.bold, letterSpacing: 1)),
           Text(
             value, 
-            style: ShadowTextTheme.mono(14, color: color, weight: FontWeight.bold).copyWith(
-              shadows: [
-                Shadow(color: color.withValues(alpha: 0.5), blurRadius: 8),
-              ],
-            ),
+            style: ShadowTextTheme.mono(15, color: color, weight: FontWeight.bold),
           ),
         ],
       ),
@@ -219,35 +202,22 @@ class _ContinueButtonState extends State<_ContinueButton> with SingleTickerProvi
         HapticFeedback.mediumImpact();
         widget.onPressed();
       },
-      child: AnimatedBuilder(
-        animation: _pulseCtrl,
-        builder: (context, child) {
-          final glowColor = ShadowColors.success.withValues(alpha: 0.3 + (0.3 * _pulseCtrl.value));
-          return Container(
-            width: double.infinity,
-            padding: const EdgeInsets.symmetric(vertical: 18),
-            decoration: BoxDecoration(
-              color: ShadowColors.success.withValues(alpha: 0.1),
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: ShadowColors.success.withValues(alpha: 0.5), width: 1.5),
-              boxShadow: [
-                BoxShadow(
-                  color: glowColor,
-                  blurRadius: 15,
-                  spreadRadius: 1,
-                ),
-              ],
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.symmetric(vertical: 18),
+        decoration: BoxDecoration(
+          color: ShadowColors.success.withValues(alpha: 0.1),
+          borderRadius: BorderRadius.circular(2),
+          border: Border.all(color: ShadowColors.success, width: 1.5),
+        ),
+        child: Center(
+          child: Text(
+            'CONTINUE',
+            style: ShadowTextTheme.mono(16, color: ShadowColors.success, weight: FontWeight.bold).copyWith(
+              letterSpacing: 6,
             ),
-            child: Center(
-              child: Text(
-                'CONTINUE',
-                style: ShadowTextTheme.mono(16, color: ShadowColors.success, weight: FontWeight.bold).copyWith(
-                  letterSpacing: 4,
-                ),
-              ),
-            ),
-          );
-        },
+          ),
+        ),
       ),
     );
   }

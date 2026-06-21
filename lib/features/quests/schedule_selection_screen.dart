@@ -8,7 +8,8 @@ import '../../core/theme/app_theme.dart';
 import 'dashboard_screen.dart';
 
 class ScheduleSelectionScreen extends ConsumerStatefulWidget {
-  const ScheduleSelectionScreen({super.key});
+  final bool isEditing;
+  const ScheduleSelectionScreen({super.key, this.isEditing = false});
 
   @override
   ConsumerState<ScheduleSelectionScreen> createState() => _ScheduleSelectionScreenState();
@@ -42,9 +43,20 @@ class _ScheduleSelectionScreenState extends ConsumerState<ScheduleSelectionScree
     }
 
     if (!mounted) return;
-    Navigator.of(context).pushReplacement(
-      MaterialPageRoute(builder: (context) => const DashboardScreen()),
-    );
+    
+    if (widget.isEditing) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Schedule updated successfully', style: ShadowTextTheme.mono(14, color: Colors.white)),
+          backgroundColor: ShadowColors.amethyst,
+        ),
+      );
+      Navigator.of(context).pop();
+    } else {
+      Navigator.of(context).pushReplacement(
+        MaterialPageRoute(builder: (context) => const DashboardScreen()),
+      );
+    }
   }
 
   @override
@@ -64,6 +76,16 @@ class _ScheduleSelectionScreenState extends ConsumerState<ScheduleSelectionScree
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   const SizedBox(height: 40),
+                  if (widget.isEditing)
+                    IconButton(
+                      icon: const Icon(Icons.arrow_back_ios_new_rounded, color: ShadowColors.textPrimary),
+                      onPressed: () => Navigator.of(context).pop(),
+                      padding: EdgeInsets.zero,
+                      alignment: Alignment.centerLeft,
+                    )
+                  else
+                    const SizedBox.shrink(),
+                  const SizedBox(height: 8),
                   Text(
                     '[SYSTEM NOTIFICATION]',
                     style: ShadowTextTheme.mono(14, color: ShadowColors.amethystLight, weight: FontWeight.bold),
@@ -113,7 +135,7 @@ class _ScheduleSelectionScreenState extends ConsumerState<ScheduleSelectionScree
                         disabledBackgroundColor: ShadowColors.surfaceAlt.withValues(alpha: 0.3),
                       ),
                       child: Text(
-                        days.isEmpty ? 'SELECT AT LEAST ONE DAY' : 'INITIALIZE SCHEDULE',
+                        days.isEmpty ? 'SELECT AT LEAST ONE DAY' : (widget.isEditing ? 'SAVE SCHEDULE' : 'INITIALIZE SCHEDULE'),
                         style: ShadowTextTheme.mono(14, weight: FontWeight.bold, color: Colors.white),
                       ),
                     ),
