@@ -21,7 +21,7 @@ class TrialScreen extends ConsumerStatefulWidget {
 
 class _TrialScreenState extends ConsumerState<TrialScreen> {
   late Timer _timer;
-  int _secondsRemaining = 3600; // 60 minutes
+  final ValueNotifier<int> _secondsRemaining = ValueNotifier<int>(3600); // 60 minutes
   
   final Map<String, int> _progress = {
     'pushups': 0,
@@ -65,21 +65,30 @@ class _TrialScreenState extends ConsumerState<TrialScreen> {
         : currentRank;
   }
 
+  @override
+  void dispose() {
+    _timer.cancel();
+    _secondsRemaining.dispose();
+    super.dispose();
+  }
+
   void _startTimer() {
     _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
-      if (_secondsRemaining > 0) {
-        setState(() {
-          _secondsRemaining--;
-          
-          // Check for intensity warning (no progress for 30s)
-          final inactiveDuration = DateTime.now().difference(_lastProgressTime).inSeconds;
-          if (inactiveDuration >= 30 && !_showSystemWarning) {
+      if (_secondsRemaining.value > 0) {
+        _secondsRemaining.value--;
+        
+        // Check for intensity warning (no progress for 30s)
+        final inactiveDuration = DateTime.now().difference(_lastProgressTime).inSeconds;
+        if (inactiveDuration >= 30 && !_showSystemWarning) {
+          setState(() {
             _showSystemWarning = true;
-            HapticFeedback.vibrate();
-          } else if (inactiveDuration < 30 && _showSystemWarning) {
+          });
+          HapticFeedback.vibrate();
+        } else if (inactiveDuration < 30 && _showSystemWarning) {
+          setState(() {
             _showSystemWarning = false;
-          }
-        });
+          });
+        }
       } else {
         _timer.cancel();
         _handleTrialEnd(failed: true);
@@ -196,10 +205,15 @@ class _TrialScreenState extends ConsumerState<TrialScreen> {
           const SizedBox(height: 16),
           _buildBossHpBar(bossHpPercent),
           const SizedBox(height: 16),
-          Text(
-            _formatTime(_secondsRemaining),
-            style: ShadowTextTheme.mono(32, weight: FontWeight.bold)
-                .copyWith(color: ShadowColors.hpRed, letterSpacing: 2),
+          ValueListenableBuilder<int>(
+            valueListenable: _secondsRemaining,
+            builder: (context, seconds, child) {
+              return Text(
+                _formatTime(seconds),
+                style: ShadowTextTheme.mono(32, weight: FontWeight.bold)
+                    .copyWith(color: ShadowColors.hpRed, letterSpacing: 2),
+              );
+            },
           ),
         ],
       ),

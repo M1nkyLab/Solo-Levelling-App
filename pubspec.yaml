@@ -14,30 +14,31 @@ dependencies:
   flutter_riverpod: ^2.5.1
 
   # Matrix math
-  vector_math: ^2.1.4
+  # Removed vector_math
 
-  # Google Fonts – Cinzel (serif headlines) + Roboto Mono + Rajdhani (body)
-  google_fonts: ^6.2.1
+  # Removed google_fonts
 
-  # Local storage for offline quest caching
+  # Local storage for offline quest caching and state machine
   shared_preferences: ^2.2.3
-
-  # Sensors for passive tracking
-  proximity_sensor: ^1.3.10
-  sensors_plus: ^6.1.1
-  light: ^5.0.0
+  hive: ^2.2.3
+  hive_flutter: ^1.1.0
+  path_provider: ^2.1.2
+  
+  # Navigation
+  go_router: ^13.2.0
   # Supabase for backend
   supabase_flutter: ^2.5.10
-  flutter_dotenv: ^6.0.1
 
   connectivity_plus: ^7.1.1
-  path_provider: ^2.1.5
+  google_fonts: ^8.1.0
 
 dev_dependencies:
   flutter_test:
     sdk: flutter
   flutter_lints: ^3.0.0
   flutter_launcher_icons: ^0.13.1
+  hive_generator: ^2.0.1
+  build_runner: ^2.4.13
 
 flutter_launcher_icons:
   android: "launcher_icon"
@@ -53,6 +54,5 @@ flutter_launcher_icons:
 flutter:
   uses-material-design: true
   assets:
-    - .env
     - assets/images/
     - assets/icons/

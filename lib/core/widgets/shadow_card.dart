@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:vector_math/vector_math_64.dart' as v64;
 import 'package:solo_levelling_app/core/theme/app_theme.dart';
 
 /// A reusable stat/info card with the Shadow Monarch glow aesthetic.
@@ -82,7 +81,7 @@ class _ShadowCardState extends State<ShadowCard>
               ..setEntry(3, 2, 0.001) // perspective
               ..rotateX(_isHovered ? -0.05 : 0.0)
               ..rotateY(_isHovered ? 0.05 : 0.0)
-              ..scaleByVector3(v64.Vector3(s, s, 1.0));
+              ..scale(s, s, 1.0);
 
             return AnimatedContainer(
               duration: const Duration(milliseconds: 300),

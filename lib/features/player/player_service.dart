@@ -5,7 +5,7 @@ import 'package:solo_levelling_app/features/player/player.dart';
 import 'package:solo_levelling_app/core/models/api_response.dart';
 
 /// PlayerService
-/// 
+///
 /// System service for managing player state via Supabase.
 class PlayerService {
   final _supabase = Supabase.instance.client;
@@ -25,10 +25,10 @@ class PlayerService {
 
       final player = Player.fromJson(response);
       return ApiResponse.success(player);
-
     } catch (e) {
       debugPrint('System Error fetching player profile: $e');
-      return ApiResponse.error('Failed to synchronize with the System: ${e.toString()}');
+      return ApiResponse.error(
+          'Failed to synchronize with the System: ${e.toString()}');
     }
   }
 
@@ -43,6 +43,7 @@ class PlayerService {
             'rank': 'E',
             'current_exp': 0,
             'max_exp': 100,
+            'total_exp': 0,
             'current_hp': 100,
             'max_hp': 100,
             'strength': 10,
@@ -55,14 +56,15 @@ class PlayerService {
           .single();
 
       final player = Player.fromJson(response);
-      
+
       // Removed: Redundant schedule upsert that was resetting is_configured to false.
       // The database trigger or the manual setup in schedule_provider handles this correctly.
 
       return ApiResponse.success(player);
     } catch (e) {
       debugPrint('Error initializing player: $e');
-      return ApiResponse.error('System initialization failure: ${e.toString()}');
+      return ApiResponse.error(
+          'System initialization failure: ${e.toString()}');
     }
   }
 
@@ -73,7 +75,8 @@ class PlayerService {
         return ApiResponse.error('Invalid essence amount');
       }
 
-      debugPrint('PlayerService.addExperience: Calling RPC add_player_xp for $playerId with $amount XP');
+      debugPrint(
+          'PlayerService.addExperience: Calling RPC add_player_xp for $playerId with $amount XP');
 
       // Execute the server-side level-up function.
       // The function returns SETOF but uses UPDATE...RETURNING without RETURN QUERY,
@@ -87,17 +90,14 @@ class PlayerService {
       );
 
       // Always fetch the fresh player state after the RPC executes
-      final fresh = await _supabase
-          .from('players')
-          .select()
-          .eq('id', playerId)
-          .single();
+      final fresh =
+          await _supabase.from('players').select().eq('id', playerId).single();
 
-      debugPrint('PlayerService.addExperience: Fresh state — level=${fresh['level']}, xp=${fresh['current_exp']}/${fresh['max_exp']}');
+      debugPrint(
+          'PlayerService.addExperience: Fresh state — level=${fresh['level']}, xp=${fresh['current_exp']}/${fresh['max_exp']}');
 
       final player = Player.fromJson(fresh);
       return ApiResponse.success(player);
-
     } catch (e) {
       debugPrint('XP Synchronization Error: $e');
       return ApiResponse.error('Connection to the System lost.');
@@ -110,8 +110,10 @@ class PlayerService {
       final hpLoss = (currentPlayer.maxHp * 0.3).round();
       final xpLoss = (currentPlayer.currentExp * 0.2).round();
 
-      final newHp = (currentPlayer.currentHp - hpLoss).clamp(0, currentPlayer.maxHp);
-      final newXp = (currentPlayer.currentExp - xpLoss).clamp(0, currentPlayer.maxExp);
+      final newHp =
+          (currentPlayer.currentHp - hpLoss).clamp(0, currentPlayer.maxHp);
+      final newXp =
+          (currentPlayer.currentExp - xpLoss).clamp(0, currentPlayer.maxExp);
 
       final response = await _supabase
           .from('players')
@@ -138,13 +140,24 @@ class PlayerService {
     try {
       await _supabase
           .from('players')
-          .update({'current_hp': newHp})
-          .eq('id', playerId);
+          .update({'current_hp': newHp}).eq('id', playerId);
     } catch (e) {
       debugPrint('PlayerService.updateHp error: $e');
       rethrow;
     }
   }
+
+  /// Temporary cheat method to update player level for testing
+  Future<void> updateCheatData(
+      String playerId, int level, int currentExp, int maxExp) async {
+    try {
+      await _supabase.from('players').update({
+        'level': level,
+        'current_exp': currentExp,
+        'max_exp': maxExp,
+      }).eq('id', playerId);
+    } catch (e) {
+      debugPrint('updateCheatData error: $e');
+    }
+  }
 }
-
-

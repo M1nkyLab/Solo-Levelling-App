@@ -10,7 +10,6 @@ import 'package:solo_levelling_app/features/quests/schedule_provider.dart';
 import 'package:solo_levelling_app/features/quests/daily_quest.dart';
 import 'package:solo_levelling_app/core/theme/app_theme.dart';
 import 'package:solo_levelling_app/features/player/player_status_header.dart';
-import 'package:solo_levelling_app/features/quests/quest_tracker.dart';
 import 'package:solo_levelling_app/features/quests/daily_countdown_timer.dart';
 import 'package:solo_levelling_app/features/trials/trial_portal_card.dart';
 import 'package:solo_levelling_app/features/trials/trial_failed_card.dart';
@@ -19,8 +18,10 @@ import 'package:solo_levelling_app/features/trials/trial_screen.dart';
 import 'package:solo_levelling_app/features/auth/auth_provider.dart';
 import 'package:solo_levelling_app/features/quests/quest_complete_overlay.dart';
 import 'package:solo_levelling_app/features/quests/dashboard_quest_tile.dart';
-import 'package:solo_levelling_app/features/settings/settings_screen.dart';
 import 'package:solo_levelling_app/features/player/character_avatar_widget.dart';
+import 'package:solo_levelling_app/features/player/player_profile_screen.dart';
+import 'package:solo_levelling_app/features/main/notification_screen.dart' as solo_levelling_app_notifications;
+import 'package:solo_levelling_app/features/settings/settings_screen.dart' as solo_levelling_app_settings;
 
 // ─────────────────────────────────────────────
 //  Dashboard Screen
@@ -37,7 +38,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
   late AnimationController _entranceCtrl;
   final List<Animation<double>> _staggeredAnims = [];
   int _penaltyExpLost = 0;
-  bool _isQuestStarted = false;
+
 
   @override
   void initState() {
@@ -124,20 +125,6 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
     final bool isScheduledDay = scheduleState.days.contains(selectedDate.weekday);
     final bool hasQuests = quests.isNotEmpty;
 
-    // --- AUTONOMOUS ARISE TRIGGER ---
-    // If we are on a scheduled day but the list is empty and we're not already loading, 
-    // trigger an immediate background fetch to "Arise" the protocols.
-    if (isScheduledDay && !hasQuests && !isLoading && authState.user != null) {
-      debugPrint('Dashboard: Autonomous Arise triggered for ${selectedDate.weekday}');
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        ref.read(questProvider.notifier).fetchQuests(
-          authState.user!.id,
-          date: selectedDate,
-          localSchedule: scheduleState.days,
-        );
-      });
-    }
-
     final bool showTrialPortal = isToday && player.isTrialAvailable && player.trialStatus != TrialStatus.failed;
     final bool allDone = hasQuests && quests.every((q) => q.isCompleted);
 
@@ -167,34 +154,35 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
                           position: _staggeredAnims[0].drive(
                             Tween<Offset>(begin: const Offset(0, 0.2), end: Offset.zero),
                           ),
-                          child: Stack(
-                            clipBehavior: Clip.none,
-                            alignment: Alignment.bottomCenter,
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
                             children: [
-                              CharacterAvatarWidget(
-                                rank: player.rank,
-                                level: player.level,
-                              ),
-                              Padding(
-                                padding: const EdgeInsets.only(bottom: 20),
-                                child: PlayerStatusHeader(
-                                  level:      player.level,
-                                  currentXp:  player.currentExp,
-                                  maxXp:      player.maxExp,
-                                  currentHp:  player.currentHp,
-                                  maxHp:      player.maxHp,
+                              GestureDetector(
+                                onTap: () {
+                                  HapticFeedback.lightImpact();
+                                  Navigator.of(context).push(
+                                    MaterialPageRoute(builder: (context) => const PlayerProfileScreen()),
+                                  );
+                                },
+                                child: CharacterAvatarWidget(
+                                  rank: player.rank,
+                                  level: player.level,
                                 ),
+                              ),
+                              PlayerStatusHeader(
+                                playerName: authState.user?.userMetadata?['username']?.toString().toUpperCase() ?? 'HUNTER',
+                                level:      player.level,
+                                currentXp:  player.currentExp,
+                                maxXp:      player.maxExp,
+                                currentHp:  player.currentHp,
+                                maxHp:      player.maxHp,
                               ),
                             ],
                           ),
                         ),
                       ),
                       
-                      const SizedBox(height: 24),
 
-                      _buildHorizontalDaySelector(),
-
-                      const SizedBox(height: 24),
 
                       FadeTransition(
                         opacity: _staggeredAnims[1],
@@ -226,6 +214,9 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
                         ),
                         const SizedBox(height: 24),
                       ],
+
+                      _buildHorizontalDaySelector(),
+                      const SizedBox(height: 24),
 
                       _buildQuestSectionHeader(quests, showTrialPortal, scheduleState.days, selectedDate, isScheduledDay, player.trialStatus == TrialStatus.penalty),
                       
@@ -266,7 +257,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
                               style: TextStyle(
                                 color: ShadowColors.textDisabled,
                                 fontSize: 12,
-                                fontFamily: 'ShadowMono',
+
                                 letterSpacing: 1.5,
                               ),
                             ),
@@ -367,44 +358,12 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
                   SliverToBoxAdapter(
                     child: Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 16),
-                      child: Stack(
-                        children: [
-                          // Base: The actual list of quests
-                          Column(
-                            children: quests.map((q) => DashboardQuestTile(
-                              quest: q,
-                              targetReps: q.getActualReps(player.level),
-                              selectedDate: selectedDate,
-                            )).toList(),
-                          ),
-
-                          // Top layer: Blur & Start Quest Button
-                          if (!_isQuestStarted)
-                            Positioned.fill(
-                              child: Container(
-                                decoration: BoxDecoration(
-                                  color: ShadowColors.obsidian.withValues(alpha: 0.8),
-                                  borderRadius: BorderRadius.circular(12),
-                                ),
-                                child: Center(
-                                  child: Padding(
-                                    padding: const EdgeInsets.symmetric(horizontal: 24),
-                                    child: _MonarchButton(
-                                      label: 'START QUEST',
-                                      icon: Icons.play_arrow_rounded,
-                                      onTap: () {
-                                        _vibrate();
-                                        setState(() {
-                                          _isQuestStarted = true;
-                                        });
-                                      },
-                                      isPrimary: true,
-                                    ),
-                                  ),
-                                ),
-                              ),
-                            ),
-                        ],
+                      child: Column(
+                        children: quests.map((q) => DashboardQuestTile(
+                          quest: q,
+                          targetReps: q.getActualReps(player.level),
+                          selectedDate: selectedDate,
+                        )).toList(),
                       ),
                     ),
                   ),
@@ -433,58 +392,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
               ),
             ),
           
-          _buildBottomNav(),
         ],
-      ),
-    );
-  }
-
-  Widget _buildBottomNav() {
-    return Positioned(
-      left: 24,
-      right: 24,
-      bottom: 24,
-      child: Container(
-        height: 64,
-        decoration: BoxDecoration(
-          color: ShadowColors.obsidian,
-          borderRadius: BorderRadius.circular(32),
-          border: Border.all(color: ShadowColors.systemBorder.withValues(alpha: 0.5), width: 1),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.5),
-              blurRadius: 10,
-              offset: const Offset(0, 4),
-            )
-          ]
-        ),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-          children: [
-            _buildNavItem(Icons.home_rounded, true, () {}),
-            _buildNavItem(Icons.settings_rounded, false, () {
-              HapticFeedback.lightImpact();
-              Navigator.of(context).push(
-                MaterialPageRoute(builder: (context) => const SettingsScreen()),
-              );
-            }),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildNavItem(IconData icon, bool isActive, VoidCallback onTap) {
-    return Expanded(
-      child: GestureDetector(
-        onTap: onTap,
-        behavior: HitTestBehavior.opaque,
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(icon, color: isActive ? ShadowColors.amethyst : ShadowColors.textDisabled, size: 28),
-          ],
-        ),
       ),
     );
   }
@@ -589,18 +497,32 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
   }
 
   Widget _buildAppBar() {
-    final user = ref.watch(authProvider).user;
-    final username = user?.userMetadata?['username'] as String? ?? 'HUNTER';
-
     return SliverAppBar(
       backgroundColor: Colors.transparent,
       elevation: 0,
       pinned: true,
-      centerTitle: true,
-      title: Text(
-        username.toUpperCase(),
-        style: ShadowTextTheme.headline(20, letterSpacing: 2),
-      ),
+      centerTitle: false,
+      actions: [
+        IconButton(
+          icon: const Icon(Icons.notifications_none_rounded, color: ShadowColors.textPrimary),
+          onPressed: () {
+            HapticFeedback.lightImpact();
+            Navigator.of(context).push(
+              MaterialPageRoute(builder: (context) => const solo_levelling_app_notifications.NotificationScreen()),
+            );
+          },
+        ),
+        IconButton(
+          icon: const Icon(Icons.settings_outlined, color: ShadowColors.textPrimary),
+          onPressed: () {
+            HapticFeedback.lightImpact();
+            Navigator.of(context).push(
+              MaterialPageRoute(builder: (context) => const solo_levelling_app_settings.SettingsScreen()),
+            );
+          },
+        ),
+        const SizedBox(width: 8),
+      ],
     );
   }
 
@@ -616,10 +538,12 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               crossAxisAlignment: CrossAxisAlignment.end,
               children: [
-                Text(
-                  isTrial ? 'RANK UP TRIAL' : (isPenalty ? 'PENALTY PROTOCOL' : 'DAILY QUESTS'),
-                  style: ShadowTextTheme.headline(24, letterSpacing: 1.5).copyWith(
-                    color: isTrial ? ShadowColors.portalBlue : (isPenalty ? ShadowColors.hpRed : ShadowColors.textPrimary),
+                Expanded(
+                  child: Text(
+                    isTrial ? 'RANK UP TRIAL' : (isPenalty ? 'PENALTY PROTOCOL' : 'DAILY QUESTS'),
+                    style: ShadowTextTheme.headline(24, letterSpacing: 1.5).copyWith(
+                      color: isTrial ? ShadowColors.portalBlue : (isPenalty ? ShadowColors.hpRed : ShadowColors.textPrimary),
+                    ),
                   ),
                 ),
               ],
@@ -746,9 +670,11 @@ class _CompletionBannerState extends ConsumerState<_CompletionBanner> with Singl
                   if (widget.isToday && _nextWorkoutIn > Duration.zero) ...[
                     Row(
                       children: [
-                        Text(
-                          'SYSTEM COOLDOWN. NEXT QUEST IN:',
-                          style: ShadowTextTheme.mono(10, color: ShadowColors.textSecondary, weight: FontWeight.bold, letterSpacing: 1),
+                        Expanded(
+                          child: Text(
+                            'SYSTEM COOLDOWN. NEXT QUEST IN:',
+                            style: ShadowTextTheme.mono(10, color: ShadowColors.textSecondary, weight: FontWeight.bold, letterSpacing: 1),
+                          ),
                         ),
                       ],
                     ),
@@ -764,9 +690,11 @@ class _CompletionBannerState extends ConsumerState<_CompletionBanner> with Singl
                       children: [
                         const Icon(Icons.verified_rounded, color: accentColor, size: 20),
                         const SizedBox(width: 12),
-                        Text(
-                          'DAILY QUEST COMPLETED',
-                          style: ShadowTextTheme.headline(16, color: accentColor, letterSpacing: 1),
+                        Expanded(
+                          child: Text(
+                            'DAILY QUEST COMPLETED',
+                            style: ShadowTextTheme.headline(16, color: accentColor, letterSpacing: 1),
+                          ),
                         ),
                       ],
                     ),

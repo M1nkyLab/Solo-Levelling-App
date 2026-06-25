@@ -1,6 +1,8 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:google_fonts/google_fonts.dart';
+
 import 'package:solo_levelling_app/features/player/player_provider.dart';
 import 'package:solo_levelling_app/features/quests/quest_provider.dart';
 import 'package:solo_levelling_app/features/quests/schedule_provider.dart';
@@ -113,51 +115,60 @@ class _DailyCountdownTimerState extends ConsumerState<DailyCountdownTimer> {
     final now = DateTime.now();
     final isTodayScheduled = schedule.contains(now.weekday);
 
-    // Green if done or if today isn't a workout day
     final isCompletedState = allDone || !isTodayScheduled;
-    final color = isCompletedState ? ShadowColors.success : ShadowColors.hpRed;
+    final color = isCompletedState ? ShadowColors.success : const Color(0xFFFF3366);
 
-    return FittedBox(
-      fit: BoxFit.scaleDown,
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-        decoration: BoxDecoration(
-          color: color.withValues(alpha: 0.05),
-          borderRadius: BorderRadius.circular(2),
-          border: Border.all(color: color.withValues(alpha: 0.3), width: 1.0),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(
-              isCompletedState ? Icons.check_circle_outline_rounded : Icons.timer_outlined,
-              color: color,
-              size: 14,
-            ),
-            const SizedBox(width: 8),
-            ValueListenableBuilder<Duration>(
-              valueListenable: _remainingTime,
-              builder: (context, duration, _) {
-                String label;
-                if (isCompletedState) {
-                  label = 'DAILY QUEST COMPLETED';
-                } else {
-                  label = 'TIME REMAINING [ ${_formatDuration(duration)} ]';
-                }
-
-                return Text(
-                  label,
-                  style: ShadowTextTheme.mono(
-                    12,
-                    color: color,
-                    weight: FontWeight.bold,
-                    letterSpacing: 1.5,
-                  ),
-                );
-              },
-            ),
-          ],
-        ),
+    return Container(
+      width: double.infinity,
+      margin: const EdgeInsets.symmetric(horizontal: 16),
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+      decoration: BoxDecoration(
+        color: isCompletedState ? color.withValues(alpha: 0.1) : const Color(0xAA1A0000),
+        border: Border.all(color: color, width: 1),
+        borderRadius: BorderRadius.circular(8),
+        boxShadow: [],
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Row(
+            children: [
+              Icon(
+                isCompletedState ? Icons.check_circle_outline_rounded : Icons.timer_outlined,
+                color: color,
+                size: 20,
+                shadows: [],
+              ),
+              const SizedBox(width: 8),
+              Text(
+                isCompletedState ? 'DAILY QUEST COMPLETED' : 'TIME UNTIL PENALTY',
+                style: GoogleFonts.rajdhani(
+                  fontSize: 14,
+                  fontWeight: FontWeight.bold,
+                  color: isCompletedState ? color : const Color(0xFFFF88AA),
+                  letterSpacing: 1,
+                ),
+              ),
+            ],
+          ),
+          ValueListenableBuilder<Duration>(
+            valueListenable: _remainingTime,
+            builder: (context, duration, _) {
+              if (isCompletedState) {
+                return const SizedBox.shrink();
+              }
+              return Text(
+                _formatDuration(duration),
+                style: GoogleFonts.exo2(
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                  color: const Color(0xFFFF3366),
+                  shadows: [],
+                ),
+              );
+            },
+          ),
+        ],
       ),
     );
   }

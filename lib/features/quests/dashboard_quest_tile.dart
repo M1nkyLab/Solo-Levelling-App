@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:solo_levelling_app/core/theme/app_theme.dart';
 import 'package:solo_levelling_app/features/quests/daily_quest.dart';
 import 'package:solo_levelling_app/features/quests/quest_provider.dart';
+import 'package:solo_levelling_app/features/quests/active_workout_screen.dart';
 
 class DashboardQuestTile extends ConsumerStatefulWidget {
   final DailyQuest quest;
@@ -161,6 +162,7 @@ class _DashboardQuestTileState extends ConsumerState<DashboardQuestTile> {
                         Text(
                           widget.quest.title.toUpperCase(),
                           style: ShadowTextTheme.headline(18, color: isCompleted ? ShadowColors.textDisabled : ShadowColors.textPrimary),
+                          overflow: TextOverflow.ellipsis,
                         ),
                         const SizedBox(height: 4),
                         Text(
@@ -203,8 +205,66 @@ class _DashboardQuestTileState extends ConsumerState<DashboardQuestTile> {
         children: [
           const Divider(color: ShadowColors.systemBorder),
           const SizedBox(height: 12),
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton(
+              onPressed: () async {
+                final allQuests = ref.read(questProvider);
+                final initialIndex = allQuests.indexWhere((q) => q.id == widget.quest.id);
+                
+                final completedReps = await Navigator.of(context).push<int>(
+                  MaterialPageRoute(
+                    builder: (_) => ActiveWorkoutScreen(
+                      allQuests: allQuests,
+                      initialIndex: initialIndex >= 0 ? initialIndex : 0,
+                    ),
+                  ),
+                );
+                
+                if (completedReps != null && mounted) {
+                  // If returned with more reps, update the provider
+                  if (completedReps > widget.quest.currentReps) {
+                    final int repsToAdd = completedReps - widget.quest.currentReps;
+                    ref.read(questProvider.notifier).updateReps(
+                      widget.quest.id,
+                      repsToAdd,
+                      date: widget.selectedDate
+                    );
+                    
+                    if (completedReps >= widget.targetReps && !widget.quest.isCompleted) {
+                      HapticFeedback.heavyImpact();
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text(
+                            '${widget.quest.title.toUpperCase()} COMPLETED',
+                            style: ShadowTextTheme.mono(12, color: ShadowColors.obsidian, weight: FontWeight.bold),
+                          ),
+                          backgroundColor: ShadowColors.success,
+                          duration: const Duration(seconds: 2),
+                        ),
+                      );
+                      setState(() {
+                        _isExpanded = false;
+                      });
+                    }
+                  }
+                }
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: ShadowColors.amethyst.withValues(alpha: 0.2),
+                side: const BorderSide(color: ShadowColors.amethyst, width: 1),
+                padding: const EdgeInsets.symmetric(vertical: 12),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+              ),
+              child: Text(
+                'ENTER ACTIVE WORKOUT',
+                style: ShadowTextTheme.mono(12, color: ShadowColors.amethystLight, weight: FontWeight.bold, letterSpacing: 1),
+              ),
+            ),
+          ),
+          const SizedBox(height: 16),
           Text(
-            'TRACK PROGRESS',
+            'OR QUICK TRACK',
             style: ShadowTextTheme.mono(10, color: ShadowColors.textSecondary, weight: FontWeight.bold),
           ),
           const SizedBox(height: 12),

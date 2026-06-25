@@ -36,6 +36,12 @@ class ShadowColors {
   static const Color warning        = Color(0xFFFFCC00); // System Warning
   static const Color xpGold         = Color(0xFFFFD700); // System Reward
 
+  // Penalty Zone Colors
+  static const Color penaltyRed     = Color(0xFFFF0033); // Neon crimson for penalty
+  static const Color penaltyBgLight = Color(0xFF220000); // Penalty overlay box
+  static const Color penaltyBgDark  = Color(0xFF110000); // Penalty base bg
+  static const Color penaltyBorder  = Color(0x66FF0033); // Faded crimson border
+
   // Custom transparent background
   static Color get blackTransparent => Colors.black.withValues(alpha: 0.9);
 
@@ -68,15 +74,15 @@ class ShadowColors {
 class ShadowTextTheme {
   ShadowTextTheme._();
 
-  // Cinzel – Authoritative Serif for edicts and headers
-  static final TextStyle _cinzelBase = GoogleFonts.cinzel(
+  // Standard system font for edicts and headers
+  static TextStyle get _cinzelBase => GoogleFonts.cinzel(
     color: ShadowColors.textPrimary,
     letterSpacing: 2.0,
     fontWeight: FontWeight.bold,
   );
 
-  // Rajdhani – Clean, geometric sans-serif for stats & logs
-  static final TextStyle _rajdhaniBase = GoogleFonts.rajdhani(
+  // Standard system font for stats & logs
+  static TextStyle get _rajdhaniBase => GoogleFonts.rajdhani(
     color: ShadowColors.textPrimary,
     letterSpacing: 0.5,
   );
@@ -97,13 +103,14 @@ class ShadowTextTheme {
         letterSpacing: letterSpacing,
       );
 
-  static TextStyle body(double size, {Color? color, FontWeight? weight, bool italic = false, double? letterSpacing}) =>
+  static TextStyle body(double size, {Color? color, FontWeight? weight, bool italic = false, double? letterSpacing, double? height}) =>
       _rajdhaniBase.copyWith(
         fontSize: size,
         color: color ?? ShadowColors.textSecondary,
         fontWeight: weight,
         fontStyle: italic ? FontStyle.italic : FontStyle.normal,
         letterSpacing: letterSpacing,
+        height: height,
       );
 }
 

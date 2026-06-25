@@ -9,9 +9,10 @@ class Player {
   final PlayerRank rank;
   final int currentExp;
   final int maxExp;
+  final int totalExp;
   final int currentHp;
   final int maxHp;
-  
+
   // RPG Stats
   final int strength;
   final int agility;
@@ -37,6 +38,7 @@ class Player {
     this.rank = PlayerRank.E,
     this.currentExp = 0,
     this.maxExp = 100,
+    this.totalExp = 0,
     this.currentHp = 100,
     this.maxHp = 100,
     this.strength = 10,
@@ -64,6 +66,7 @@ class Player {
     PlayerRank? rank,
     int? currentExp,
     int? maxExp,
+    int? totalExp,
     int? currentHp,
     int? maxHp,
     int? strength,
@@ -88,6 +91,7 @@ class Player {
       rank: rank ?? this.rank,
       currentExp: currentExp ?? this.currentExp,
       maxExp: maxExp ?? this.maxExp,
+      totalExp: totalExp ?? this.totalExp,
       currentHp: currentHp ?? this.currentHp,
       maxHp: maxHp ?? this.maxHp,
       strength: strength ?? this.strength,
@@ -100,7 +104,8 @@ class Player {
       isDead: isDead ?? this.isDead,
       lastPenaltyCheck: lastPenaltyCheck ?? this.lastPenaltyCheck,
       lastWorkoutDate: lastWorkoutDate ?? this.lastWorkoutDate,
-      consecutiveMissedDays: consecutiveMissedDays ?? this.consecutiveMissedDays,
+      consecutiveMissedDays:
+          consecutiveMissedDays ?? this.consecutiveMissedDays,
       isLoaded: isLoaded ?? this.isLoaded,
       unlockedSkills: unlockedSkills ?? this.unlockedSkills,
       extractedShadows: extractedShadows ?? this.extractedShadows,
@@ -115,6 +120,7 @@ class Player {
       'rank': rank.name,
       'current_exp': currentExp,
       'max_exp': maxExp,
+      'total_exp': totalExp,
       'current_hp': currentHp,
       'max_hp': maxHp,
       'strength': strength,
@@ -144,6 +150,7 @@ class Player {
       ),
       currentExp: json['current_exp'] ?? 0,
       maxExp: json['max_exp'] ?? 100,
+      totalExp: json['total_exp'] ?? 0,
       currentHp: json['current_hp'] ?? 100,
       maxHp: json['max_hp'] ?? 100,
       strength: json['strength'] ?? 10,
@@ -169,4 +176,3 @@ class Player {
     );
   }
 }
-

@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -6,28 +7,30 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:solo_levelling_app/features/player/player.dart';
 import 'package:solo_levelling_app/features/player/player_rank.dart';
 import 'package:solo_levelling_app/features/player/player_service.dart';
+import 'package:solo_levelling_app/core/logic/system_logic.dart';
 
 class PlayerNotifier extends StateNotifier<Player> {
   final PlayerService _playerService = PlayerService();
   final Ref ref;
 
-  PlayerNotifier(this.ref) : super(Player(
-    id: '',
-    userId: '',
-    level: 1,
-    rank: PlayerRank.E,
-    currentExp: 0,
-    maxExp: 100,
-    currentHp: 100,
-    maxHp: 100,
-    strength: 10,
-    agility: 10,
-    vitality: 10,
-    intelligence: 10,
-    sense: 10,
-    availableStatPoints: 0,
-    lastPenaltyCheck: null,
-  )) {
+  PlayerNotifier(this.ref)
+      : super(Player(
+          id: '',
+          userId: '',
+          level: 1,
+          rank: PlayerRank.E,
+          currentExp: 0,
+          maxExp: 100,
+          currentHp: 100,
+          maxHp: 100,
+          strength: 10,
+          agility: 10,
+          vitality: 10,
+          intelligence: 10,
+          sense: 10,
+          availableStatPoints: 0,
+          lastPenaltyCheck: null,
+        )) {
     _loadLocalState();
   }
 
@@ -50,10 +53,21 @@ class PlayerNotifier extends StateNotifier<Player> {
     await prefs.setString(_playerKey, json.encode(state.toJson()));
   }
 
+  Timer? _saveTimer;
+
   @override
   set state(Player value) {
     super.state = value;
-    _saveLocalState();
+    _saveTimer?.cancel();
+    _saveTimer = Timer(const Duration(seconds: 1), () {
+      _saveLocalState();
+    });
+  }
+
+  @override
+  void dispose() {
+    _saveTimer?.cancel();
+    super.dispose();
   }
 
   /// Synchronize player state from Supabase
@@ -75,7 +89,8 @@ class PlayerNotifier extends StateNotifier<Player> {
         state = initResponse.data!.copyWith(isLoaded: true);
       } else {
         debugPrint('Error initializing player: ${initResponse.error}');
-        state = state.copyWith(isLoaded: true); // Prevent lockout on initialization error
+        state = state.copyWith(
+            isLoaded: true); // Prevent lockout on initialization error
       }
     } else {
       debugPrint('Error fetching player from Supabase: ${response.error}');
@@ -117,17 +132,19 @@ class PlayerNotifier extends StateNotifier<Player> {
 
     final now = DateTime.now();
     final lastCheck = state.lastPenaltyCheck!;
-    
+
     // Check if we already checked today
-    final isAlreadyChecked = lastCheck.year == now.year && 
-                            lastCheck.month == now.month && 
-                            lastCheck.day == now.day;
+    final isAlreadyChecked = lastCheck.year == now.year &&
+        lastCheck.month == now.month &&
+        lastCheck.day == now.day;
 
     if (isAlreadyChecked) return 0;
 
     // Calculate missed scheduled days since lastCheck (excluding today)
     int missedCount = 0;
-    DateTime checkDate = DateTime(lastCheck.year, lastCheck.month, lastCheck.day).add(const Duration(days: 1));
+    DateTime checkDate =
+        DateTime(lastCheck.year, lastCheck.month, lastCheck.day)
+            .add(const Duration(days: 1));
     final today = DateTime(now.year, now.month, now.day);
 
     while (checkDate.isBefore(today)) {
@@ -142,7 +159,7 @@ class PlayerNotifier extends StateNotifier<Player> {
       final damage = missedCount * 33;
       final newHp = (state.currentHp - damage).clamp(0, state.maxHp);
       final newConsecutiveMissed = state.consecutiveMissedDays + missedCount;
-      
+
       state = state.copyWith(
         currentHp: newHp,
         consecutiveMissedDays: newConsecutiveMissed,
@@ -159,7 +176,7 @@ class PlayerNotifier extends StateNotifier<Player> {
 
       // Sync to Supabase
       _playerService.updateHp(state.id, state.currentHp);
-      
+
       return damage;
     }
 
@@ -169,7 +186,8 @@ class PlayerNotifier extends StateNotifier<Player> {
 
   void _triggerDemotionProtocol() {
     // 1. Demote to the max level of the PREVIOUS rank (The Rank Floor)
-    final previousRankIndex = (PlayerRank.values.indexOf(state.rank) - 1).clamp(0, PlayerRank.values.length - 1);
+    final previousRankIndex = (PlayerRank.values.indexOf(state.rank) - 1)
+        .clamp(0, PlayerRank.values.length - 1);
     final previousRank = PlayerRank.values[previousRankIndex];
     final floorLevel = previousRank.rankFloorLevel;
 
@@ -181,8 +199,9 @@ class PlayerNotifier extends StateNotifier<Player> {
       consecutiveMissedDays: 0, // Reset streak
       trialStatus: TrialStatus.idle, // Clear penalty state on demotion
     );
-    
-    debugPrint('DEMOTION PROTOCOL: Rank downgraded to ${previousRank.rankLabel}');
+
+    debugPrint(
+        'DEMOTION PROTOCOL: Rank downgraded to ${previousRank.rankLabel}');
     // Sync with Supabase
     _playerService.applyPenalty(state);
   }
@@ -206,7 +225,9 @@ class PlayerNotifier extends StateNotifier<Player> {
       level: newLevel,
       currentExp: 0,
       maxExp: (state.maxExp * 1.5).toInt(), // Scale difficulty for next rank
-      currentHp: (state.trialStatus == TrialStatus.failed) ? 30 : state.maxHp, // Revival: 30 HP
+      currentHp: (state.trialStatus == TrialStatus.failed)
+          ? 30
+          : state.maxHp, // Revival: 30 HP
       trialStatus: TrialStatus.idle,
     );
   }
@@ -219,12 +240,12 @@ class PlayerNotifier extends StateNotifier<Player> {
     // PRD: 50% HP loss on failure
     final damage = (state.maxHp * 0.5).round();
     final newHp = (state.currentHp - damage).clamp(0, state.maxHp);
-    
+
     state = state.copyWith(
       currentHp: newHp,
       trialStatus: TrialStatus.failed,
     );
-    
+
     // Sync to Supabase
     _playerService.updateHp(state.id, newHp);
   }
@@ -246,8 +267,27 @@ class PlayerNotifier extends StateNotifier<Player> {
       return;
     }
     // Optimistic UI update
-    final optimisticExp = state.currentExp + amount;
-    state = state.copyWith(currentExp: optimisticExp);
+    int newExp = state.currentExp + amount;
+    int newTotalExp = state.totalExp + amount;
+    int newLevel = state.level;
+    int newMaxExp = state.maxExp;
+    PlayerRank newRank = state.rank;
+
+    // Simulate level ups locally while waiting for backend
+    while (newExp >= newMaxExp && newLevel < 100) {
+      newExp -= newMaxExp;
+      newLevel++;
+      newMaxExp = SystemLogic.xpToNextLevel(newLevel);
+      newRank = _determineRankFromLevel(newLevel);
+    }
+
+    state = state.copyWith(
+      currentExp: newExp,
+      maxExp: newMaxExp,
+      totalExp: newTotalExp,
+      level: newLevel,
+      rank: newRank,
+    );
 
     final response = await _playerService.addExperience(playerId, amount);
 

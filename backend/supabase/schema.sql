@@ -19,6 +19,7 @@ CREATE TABLE players (
     rank hunter_rank DEFAULT 'E' NOT NULL,
     current_exp INTEGER DEFAULT 0 NOT NULL CHECK (current_exp >= 0),
     max_exp INTEGER DEFAULT 100 NOT NULL,
+    total_exp INTEGER DEFAULT 0 NOT NULL CHECK (total_exp >= 0),
     
     -- Vitality System
     current_hp INTEGER DEFAULT 100 NOT NULL,
@@ -39,6 +40,13 @@ CREATE TABLE players (
     last_penalty_check TIMESTAMP WITH TIME ZONE,
     is_dead BOOLEAN DEFAULT FALSE NOT NULL,
     
+    -- Penalty System (Amortized Debt & Crash Loop)
+    consecutive_missed_days INTEGER DEFAULT 0 NOT NULL,
+    penalty_debt_pushups INTEGER DEFAULT 0 NOT NULL,
+    penalty_debt_situps INTEGER DEFAULT 0 NOT NULL,
+    penalty_debt_squats INTEGER DEFAULT 0 NOT NULL,
+    penalty_debt_run_km NUMERIC DEFAULT 0.0 NOT NULL,
+    
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
@@ -55,6 +63,8 @@ CREATE TABLE daily_quests (
     current_reps INTEGER DEFAULT 0 NOT NULL CHECK (current_reps >= 0),
     is_completed BOOLEAN DEFAULT FALSE NOT NULL,
     date DATE DEFAULT CURRENT_DATE NOT NULL,
+    assigned_at TIMESTAMP WITH TIME ZONE DEFAULT NOW() NOT NULL, -- for anti-cheat
+    completed_at TIMESTAMP WITH TIME ZONE,
     UNIQUE(player_id, quest_id, date)
 );
 
@@ -70,6 +80,25 @@ CREATE TABLE workout_schedules (
     is_configured BOOLEAN DEFAULT FALSE NOT NULL,
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     UNIQUE(player_id)
+);
+
+-- Quest History (System Logs)
+CREATE TABLE quest_history (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    player_id UUID REFERENCES players(id) ON DELETE CASCADE,
+    quest_id TEXT NOT NULL,
+    reps_completed INTEGER NOT NULL,
+    action_type TEXT NOT NULL, -- 'completion', 'penalty_payment', 'failure'
+    server_time TIMESTAMP WITH TIME ZONE DEFAULT NOW() NOT NULL
+);
+
+-- System Notifications
+CREATE TABLE system_notifications (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    player_id UUID REFERENCES players(id) ON DELETE CASCADE,
+    message TEXT NOT NULL,
+    is_read BOOLEAN DEFAULT FALSE NOT NULL,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW() NOT NULL
 );
 
 -- ── FUNCTIONS & TRIGGERS ──────────────────────────────────────────────────
@@ -131,9 +160,10 @@ BEGIN
     new_xp := p_rec.current_exp + xp_amount;
     new_lvl := p_rec.level;
     new_max_xp := p_rec.max_exp;
+    p_rec.total_exp := p_rec.total_exp + xp_amount;
 
     -- Level up loop
-    WHILE new_xp >= new_max_xp LOOP
+    WHILE new_xp >= new_max_xp AND new_lvl < 100 LOOP
         new_xp := new_xp - new_max_xp;
         new_lvl := new_lvl + 1;
         
@@ -141,7 +171,11 @@ BEGIN
         new_max_xp := ROUND(100 * (new_lvl * new_lvl * 0.4 + new_lvl * 0.6));
         
         -- Add stat points
-        p_rec.available_stat_points := p_rec.available_stat_points + stat_points_per_level;
+        IF new_lvl IN (10, 25, 45, 70, 90) THEN
+            p_rec.available_stat_points := p_rec.available_stat_points + 6;
+        ELSE
+            p_rec.available_stat_points := p_rec.available_stat_points + 3;
+        END IF;
         
         -- Determine Rank (Simplified mapping for DB)
         IF new_lvl >= 91 THEN p_rec.rank := 'S';
@@ -161,6 +195,7 @@ BEGIN
     SET current_exp = new_xp,
         level = new_lvl,
         max_exp = new_max_xp,
+        total_exp = p_rec.total_exp,
         rank = p_rec.rank,
         current_hp = p_rec.current_hp,
         available_stat_points = p_rec.available_stat_points

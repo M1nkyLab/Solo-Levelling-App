@@ -62,8 +62,9 @@ class _QuestCompleteOverlayState extends State<QuestCompleteOverlay>
     _controller.forward();
 
     HapticFeedback.vibrate();
-    Future.delayed(
-        const Duration(milliseconds: 300), () => HapticFeedback.heavyImpact());
+    Future.delayed(const Duration(milliseconds: 300), () {
+      if (mounted) HapticFeedback.heavyImpact();
+    });
   }
 
   @override
@@ -322,10 +323,12 @@ class _RankUpOverlayState extends State<RankUpOverlay>
 
     _controller.forward();
     HapticFeedback.vibrate();
-    Future.delayed(
-        const Duration(milliseconds: 400), () => HapticFeedback.heavyImpact());
-    Future.delayed(
-        const Duration(milliseconds: 800), () => HapticFeedback.heavyImpact());
+    Future.delayed(const Duration(milliseconds: 400), () {
+      if (mounted) HapticFeedback.heavyImpact();
+    });
+    Future.delayed(const Duration(milliseconds: 800), () {
+      if (mounted) HapticFeedback.heavyImpact();
+    });
   }
 
   @override

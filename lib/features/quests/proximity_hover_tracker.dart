@@ -1,7 +1,6 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:proximity_sensor/proximity_sensor.dart';
 import 'package:solo_levelling_app/core/theme/app_theme.dart';
 
 /// A full-screen passive tracker using the Proximity Sensor.
@@ -30,7 +29,6 @@ class _ProximityHoverTrackerState extends State<ProximityHoverTracker>
     with TickerProviderStateMixin {
   late int _currentReps;
   bool _isNear = false;
-  late StreamSubscription<dynamic> _sensorSubscription;
 
   late AnimationController _flashController;
   late Animation<Color?> _flashAnimation;
@@ -66,20 +64,7 @@ class _ProximityHoverTrackerState extends State<ProximityHoverTracker>
   }
 
   void _startProximityListening() {
-    _sensorSubscription = ProximitySensor.events.listen((int event) {
-      // Typically: event > 0 is NEAR, 0 is FAR
-      bool isCurrentlyNear = (event > 0);
-
-      if (isCurrentlyNear && !_isNear) {
-        // User lowered down
-        setState(() => _isNear = true);
-        HapticFeedback.mediumImpact(); // Subtle "Lock-on" feedback
-      } else if (!isCurrentlyNear && _isNear) {
-        // User pushed back up -> Full Rep Cycle Complete
-        setState(() => _isNear = false);
-        _registerRep();
-      }
-    });
+    // Sensor removed. Use manual tap.
   }
 
   void _registerRep() {
@@ -102,7 +87,6 @@ class _ProximityHoverTrackerState extends State<ProximityHoverTracker>
 
   @override
   void dispose() {
-    _sensorSubscription.cancel();
     _flashController.dispose();
     _pulseController.dispose();
     super.dispose();
@@ -110,15 +94,26 @@ class _ProximityHoverTrackerState extends State<ProximityHoverTracker>
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      height: 450, // Fixed height for list view
-      decoration: BoxDecoration(
-        color: ShadowColors.obsidian,
-        borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: ShadowColors.glassBorder.withValues(alpha: 0.1)),
-      ),
-      clipBehavior: Clip.antiAlias,
-      child: AnimatedBuilder(
+    return GestureDetector(
+      onTap: () {
+        setState(() => _isNear = true);
+        HapticFeedback.mediumImpact();
+        Future.delayed(const Duration(milliseconds: 300), () {
+          if (mounted) {
+            setState(() => _isNear = false);
+            _registerRep();
+          }
+        });
+      },
+      child: Container(
+        height: 450, // Fixed height for list view
+        decoration: BoxDecoration(
+          color: ShadowColors.obsidian,
+          borderRadius: BorderRadius.circular(24),
+          border: Border.all(color: ShadowColors.glassBorder.withValues(alpha: 0.1)),
+        ),
+        clipBehavior: Clip.antiAlias,
+        child: AnimatedBuilder(
         animation: _flashAnimation,
         builder: (context, child) {
           return Stack(
@@ -244,6 +239,6 @@ class _ProximityHoverTrackerState extends State<ProximityHoverTracker>
           );
         },
       ),
-    );
+    ));
   }
 }

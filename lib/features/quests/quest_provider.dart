@@ -6,7 +6,9 @@ import 'package:solo_levelling_app/features/player/player_rank.dart';
 import 'package:solo_levelling_app/features/player/player_provider.dart';
 import 'package:solo_levelling_app/features/quests/quest_service.dart';
 import 'package:solo_levelling_app/features/quests/schedule_provider.dart';
-
+import 'package:hive_flutter/hive_flutter.dart';
+import 'package:solo_levelling_app/core/logic/sync_service.dart';
+import 'package:solo_levelling_app/core/models/workout_state.dart';
 import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -19,6 +21,7 @@ class QuestNotifier extends Notifier<List<DailyQuest>> {
   bool _mounted = true;
   int _lastFetchId = 0;
   static const String _questsKey = 'daily_quests_state';
+  static const String _rewardedDatesKey = 'rewarded_dates_state';
 
   @override
   List<DailyQuest> build() {
@@ -29,21 +32,22 @@ class QuestNotifier extends Notifier<List<DailyQuest>> {
 
   Future<void> _loadLocalQuests() async {
     final prefs = await SharedPreferences.getInstance();
-    final jsonString = prefs.getString(_questsKey);
-    if (jsonString != null && _mounted) {
-      try {
-        final List<dynamic> jsonList = json.decode(jsonString);
-        state = jsonList.map((j) => DailyQuest.fromJson(j)).toList();
-      } catch (e) {
-        debugPrint('Error loading local quests: $e');
-      }
+    final box = Hive.box<DailyQuest>('questsBox');
+    if (box.isNotEmpty && _mounted) {
+      state = box.values.toList();
+    }
+
+    final rewardedList = prefs.getStringList(_rewardedDatesKey);
+    if (rewardedList != null && _mounted) {
+      _rewardedDates = rewardedList.toSet();
     }
   }
 
   Future<void> _saveLocalQuests() async {
-    final prefs = await SharedPreferences.getInstance();
-    final jsonString = json.encode(state.map((q) => q.toJson()).toList());
-    await prefs.setString(_questsKey, jsonString);
+    final box = Hive.box<DailyQuest>('questsBox');
+    for (var quest in state) {
+      await box.put(quest.id, quest);
+    }
   }
 
   Future<void> fetchQuests(String userId, {DateTime? date, List<int>? localSchedule}) async {
@@ -74,8 +78,6 @@ class QuestNotifier extends Notifier<List<DailyQuest>> {
     }
     
     try {
-      debugPrint('QuestNotifier: [FETCH $fetchId] Starting for $userId...');
-      
       var quests = await _questService.getDailyQuests(userId, date: date, localSchedule: effectiveSchedule);
       
       // Guard: discard stale fetches
@@ -86,7 +88,6 @@ class QuestNotifier extends Notifier<List<DailyQuest>> {
         quests = quests.map((q) => q.copyWith(isPenalty: true)).toList();
       }
 
-      debugPrint('QuestNotifier: [FETCH $fetchId] Completed. Got ${quests.length} quests.');
       state = quests;
     } catch (e, stack) {
       debugPrint('QuestNotifier: [FETCH $fetchId] Error: $e');
@@ -117,28 +118,31 @@ class QuestNotifier extends Notifier<List<DailyQuest>> {
     final isCompleted = newReps >= target;
 
     // Local update for instant UI feedback
+    var updatedQuest = quest.copyWith(currentReps: newReps, isCompleted: isCompleted);
+    
+    // Strict Workout State Machine
+    if (isCompleted && updatedQuest.state == WorkoutState.inProgress) {
+       updatedQuest = updatedQuest.copyWith(state: WorkoutState.completedPendingSync);
+    }
+    
     final newState = [...state];
-    newState[questIndex] = quest.copyWith(currentReps: newReps, isCompleted: isCompleted);
+    newState[questIndex] = updatedQuest;
     state = newState;
     _saveLocalQuests();
 
-    // Remote update
-    try {
-      await _questService.updateQuestProgress(_userId!, id, newReps.toInt(), isCompleted, date: date);
-      
-      if (isCompleted) {
-        _checkAllDone();
-      }
-    } catch (e) {
-      debugPrint('Error updating reps in Supabase: $e');
+    // Trigger Ghost Sync instead of direct backend call
+    if (isCompleted && updatedQuest.state == WorkoutState.completedPendingSync) {
+      ref.read(syncServiceProvider).markQuestCompleted(updatedQuest);
+      _checkAllDone();
     }
   }
 
   void resetFailedQuests() {
-    state = state.map((q) => q.copyWith(currentReps: 0, isCompleted: false)).toList();
+    state = state.map((q) => q.copyWith(currentReps: 0, isCompleted: false, state: WorkoutState.inProgress)).toList();
+    _saveLocalQuests();
   }
 
-  final Set<String> _rewardedDates = {};
+  Set<String> _rewardedDates = {};
 
   void _checkAllDone() {
     final quests = state;
@@ -154,7 +158,12 @@ class QuestNotifier extends Notifier<List<DailyQuest>> {
       final isPenalty = player.trialStatus == TrialStatus.penalty;
       
       if (!isPenalty && _rewardedDates.contains(dateKey)) return;
-      if (!isPenalty) _rewardedDates.add(dateKey);
+      if (!isPenalty) {
+        _rewardedDates.add(dateKey);
+        SharedPreferences.getInstance().then((prefs) {
+          prefs.setStringList(_rewardedDatesKey, _rewardedDates.toList());
+        });
+      }
 
       // System Reward Scaling: 0 XP for penalty, else scaled XP
       int rewardXp = 0;
@@ -185,15 +194,11 @@ class QuestNotifier extends Notifier<List<DailyQuest>> {
     ref.read(questCompletionOverlayProvider.notifier).state = null;
 
     if (isPenalty) {
-      debugPrint('PENALTY QUEST CLAIM: Restoring active status...');
       ref.read(playerProvider.notifier).clearPenalty();
     } else if (pendingXp != null) {
-      debugPrint('DAILY QUEST CLAIM: Awarding $pendingXp XP + HP heal...');
       await ref.read(playerProvider.notifier).addXp(pendingXp);
       await ref.read(playerProvider.notifier).healOnQuestComplete();
     }
-
-    debugPrint('QUEST CLAIM: Complete.');
   }
 
   int _getRankMultiplier(PlayerRank rank) {

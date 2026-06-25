@@ -2,6 +2,7 @@ import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:solo_levelling_app/core/theme/app_theme.dart';
+import 'package:solo_levelling_app/features/quests/penalty_zone_tracker_screen.dart' as solo_levelling_app_penalty_zone;
 
 class SystemPenaltyOverlay extends StatefulWidget {
   final int expLost;
@@ -36,7 +37,9 @@ class _SystemPenaltyOverlayState extends State<SystemPenaltyOverlay>
       TweenSequenceItem(tween: Tween(begin: -10.0, end: 0.0), weight: 25),
     ]).animate(CurvedAnimation(parent: _controller, curve: Curves.elasticIn));
 
-    _controller.repeat(period: const Duration(milliseconds: 2000));
+    _controller.forward().then((_) {
+      _controller.forward(from: 0.0);
+    });
     
     // Harsh Haptics
     HapticFeedback.vibrate();
@@ -66,7 +69,8 @@ class _SystemPenaltyOverlayState extends State<SystemPenaltyOverlay>
           ),
           
           Center(
-            child: AnimatedBuilder(
+            child: RepaintBoundary(
+              child: AnimatedBuilder(
               animation: _shake,
               builder: (context, child) {
                 return Transform.translate(
@@ -115,13 +119,18 @@ class _SystemPenaltyOverlayState extends State<SystemPenaltyOverlay>
                     SizedBox(
                       width: double.infinity,
                       child: ElevatedButton(
-                        onPressed: widget.onDismiss,
+                        onPressed: () {
+                          widget.onDismiss();
+                          Navigator.of(context).push(
+                            MaterialPageRoute(builder: (context) => const solo_levelling_app_penalty_zone.PenaltyZoneTrackerScreen()),
+                          );
+                        },
                         style: ElevatedButton.styleFrom(
                           backgroundColor: ShadowColors.hpRed,
                           foregroundColor: ShadowColors.textPrimary,
                           padding: const EdgeInsets.symmetric(vertical: 16),
                         ),
-                        child: const Text('I WILL MAINTAIN THE CYCLE'),
+                        child: const Text('ENTER ZONE', style: TextStyle(fontWeight: FontWeight.bold, letterSpacing: 2)),
                       ),
                     ),
                   ],
@@ -129,8 +138,9 @@ class _SystemPenaltyOverlayState extends State<SystemPenaltyOverlay>
               ),
             ),
           ),
-        ],
-      ),
-    );
-  }
+        ),
+      ],
+    ),
+  );
+}
 }

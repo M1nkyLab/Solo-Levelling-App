@@ -2,7 +2,6 @@ import 'dart:async';
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:light/light.dart';
 import 'package:solo_levelling_app/core/theme/app_theme.dart';
 
 /// "God-Mode" Eclipse Tracker with manual sensitivity tuning.
@@ -39,8 +38,6 @@ class _EclipseShadowTrackerState extends State<EclipseShadowTracker>
   double _manualSensitivity = 0.15; // Default to 15% light drop
   double _peakShadowDepth = 0.0;
   
-  late StreamSubscription<int> _subscription;
-  
   late AnimationController _scanController;
   late AnimationController _shadowController;
   late AnimationController _pulseController;
@@ -58,49 +55,15 @@ class _EclipseShadowTrackerState extends State<EclipseShadowTracker>
   }
 
   void _startLightSensor() {
-    _subscription = Light().lightSensorStream.listen((int lux) {
-      if (!mounted) return;
-
-      setState(() {
-        _currentLux = lux.toDouble();
-      });
-
-      // 1. Calibration
-      if (_isCalibrating) {
-        if (_baselineLux == null && _currentLux > 0) {
-          _baselineLux = _currentLux;
-          Future.delayed(const Duration(seconds: 2), () {
-            if (mounted) {
-              setState(() => _isCalibrating = false);
-              _scanController.stop();
-              HapticFeedback.mediumImpact();
-            }
-          });
-        }
-        return;
-      }
-
-      // 2. Ultra-Sensitive Detection
-      if (_baselineLux! > 0) {
-        double shadowDepth = 1.0 - (_currentLux / _baselineLux!).clamp(0.0, 1.0);
-        
-        // Track peak for UI feedback
-        if (shadowDepth > _peakShadowDepth) {
-          setState(() => _peakShadowDepth = shadowDepth);
-        }
-
-        // Trigger logic using the manual sensitivity slider
-        if (shadowDepth > _manualSensitivity && !_isDown) {
-          setState(() => _isDown = true);
-          _shadowController.forward();
-          HapticFeedback.mediumImpact();
-        } else if (shadowDepth < (_manualSensitivity * 0.6) && _isDown) {
-          setState(() => _isDown = false);
-          _shadowController.reverse();
-          _registerRep();
-          // Reset peak after rep to track the next movement
-          _peakShadowDepth = 0;
-        }
+    // Fake calibration complete after 2 seconds
+    Future.delayed(const Duration(seconds: 2), () {
+      if (mounted) {
+        setState(() {
+          _baselineLux = 100.0;
+          _isCalibrating = false;
+        });
+        _scanController.stop();
+        HapticFeedback.mediumImpact();
       }
     });
   }
@@ -116,7 +79,6 @@ class _EclipseShadowTrackerState extends State<EclipseShadowTracker>
 
   @override
   void dispose() {
-    _subscription.cancel();
     _scanController.dispose();
     _shadowController.dispose();
     _pulseController.dispose();
@@ -127,14 +89,28 @@ class _EclipseShadowTrackerState extends State<EclipseShadowTracker>
   Widget build(BuildContext context) {
     double shadowDepth = _baselineLux == null || _baselineLux == 0 ? 0 : 1.0 - (_currentLux / _baselineLux!).clamp(0.0, 1.0);
 
-    return Container(
-      decoration: BoxDecoration(
-        color: ShadowColors.obsidian,
-        borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: ShadowColors.glassBorder.withValues(alpha: 0.1)),
-      ),
-      clipBehavior: Clip.antiAlias,
-      child: Stack(
+    return GestureDetector(
+      onTap: () {
+        if (_isCalibrating) return;
+        setState(() => _isDown = true);
+        _shadowController.forward();
+        HapticFeedback.mediumImpact();
+        Future.delayed(const Duration(milliseconds: 300), () {
+          if (mounted) {
+            setState(() => _isDown = false);
+            _shadowController.reverse();
+            _registerRep();
+          }
+        });
+      },
+      child: Container(
+        decoration: BoxDecoration(
+          color: ShadowColors.obsidian,
+          borderRadius: BorderRadius.circular(24),
+          border: Border.all(color: ShadowColors.glassBorder.withValues(alpha: 0.1)),
+        ),
+        clipBehavior: Clip.antiAlias,
+        child: Stack(
         children: [
           _buildBackgroundGlow(),
           
@@ -157,7 +133,7 @@ class _EclipseShadowTrackerState extends State<EclipseShadowTracker>
           if (_isCalibrating) _buildCalibrationOverlay(),
         ],
       ),
-    );
+    ));
   }
 
   Widget _buildBackgroundGlow() {

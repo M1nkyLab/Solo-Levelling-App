@@ -10,7 +10,8 @@ ALTER TABLE players
   ADD COLUMN IF NOT EXISTS vitality              INTEGER DEFAULT 10 NOT NULL,
   ADD COLUMN IF NOT EXISTS intelligence          INTEGER DEFAULT 10 NOT NULL,
   ADD COLUMN IF NOT EXISTS sense                 INTEGER DEFAULT 10 NOT NULL,
-  ADD COLUMN IF NOT EXISTS available_stat_points INTEGER DEFAULT 0  NOT NULL;
+  ADD COLUMN IF NOT EXISTS available_stat_points INTEGER DEFAULT 0  NOT NULL,
+  ADD COLUMN IF NOT EXISTS total_exp             INTEGER DEFAULT 0  NOT NULL;
 
 -- ── 2. Add missing columns to `workout_schedules` ─────────────────
 ALTER TABLE workout_schedules
@@ -114,17 +115,22 @@ BEGIN
     new_xp     := p_rec.current_exp + xp_amount;
     new_lvl    := p_rec.level;
     new_max_xp := p_rec.max_exp;
+    p_rec.total_exp := p_rec.total_exp + xp_amount;
 
     -- Level-up loop (matches SystemLogic.dart formula)
-    WHILE new_xp >= new_max_xp LOOP
+    WHILE new_xp >= new_max_xp AND new_lvl < 100 LOOP
         new_xp  := new_xp - new_max_xp;
         new_lvl := new_lvl + 1;
 
         -- XP threshold: 100 * (level^2 * 0.4 + level * 0.6)
         new_max_xp := ROUND(100.0 * (new_lvl * new_lvl * 0.4 + new_lvl * 0.6));
 
-        -- Stat points per level
-        p_rec.available_stat_points := p_rec.available_stat_points + stat_per_level;
+        -- Add stat points
+        IF new_lvl IN (10, 25, 45, 70, 90) THEN
+            p_rec.available_stat_points := p_rec.available_stat_points + 6;
+        ELSE
+            p_rec.available_stat_points := p_rec.available_stat_points + 3;
+        END IF;
 
         -- Rank from level
         p_rec.rank := CASE
@@ -145,6 +151,7 @@ BEGIN
     SET current_exp           = new_xp,
         level                 = new_lvl,
         max_exp               = new_max_xp,
+        total_exp             = p_rec.total_exp,
         rank                  = p_rec.rank,
         current_hp            = p_rec.current_hp,
         available_stat_points = p_rec.available_stat_points

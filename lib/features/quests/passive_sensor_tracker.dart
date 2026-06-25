@@ -1,8 +1,6 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:proximity_sensor/proximity_sensor.dart';
-import 'package:sensors_plus/sensors_plus.dart';
 import 'package:solo_levelling_app/core/theme/app_theme.dart';
 import 'package:solo_levelling_app/core/widgets/smoky_progress_bar.dart';
 
@@ -33,7 +31,6 @@ class _PassiveSensorTrackerState extends State<PassiveSensorTracker>
   bool _isDipping = false;
   static const double squatThreshold = 3.5;
 
-  late StreamSubscription<dynamic> _sensorSubscription;
   late AnimationController _pulseController;
   late Animation<double> _glowAnimation;
 
@@ -52,28 +49,7 @@ class _PassiveSensorTrackerState extends State<PassiveSensorTracker>
   }
 
   void _startTracking() {
-    if (widget.type == PassiveQuestType.pushups) {
-      _sensorSubscription = ProximitySensor.events.listen((int event) {
-        bool isCurrentlyNear = (event > 0);
-        if (isCurrentlyNear && !_isNear) {
-          _isNear = true;
-          _onHalfRep();
-        } else if (!isCurrentlyNear && _isNear) {
-          _isNear = false;
-          _registerRep();
-        }
-      });
-    } else {
-      _sensorSubscription = userAccelerometerEventStream().listen((UserAccelerometerEvent event) {
-        if (event.y < -squatThreshold && !_isDipping) {
-          _isDipping = true;
-          _onHalfRep();
-        } else if (event.y > squatThreshold && _isDipping) {
-          _isDipping = false;
-          _registerRep();
-        }
-      });
-    }
+    // Sensor tracking removed. Use manual tap on the widget instead.
   }
 
   void _onHalfRep() {
@@ -98,7 +74,6 @@ class _PassiveSensorTrackerState extends State<PassiveSensorTracker>
 
   @override
   void dispose() {
-    _sensorSubscription.cancel();
     _pulseController.dispose();
     super.dispose();
   }
@@ -113,9 +88,14 @@ class _PassiveSensorTrackerState extends State<PassiveSensorTracker>
     return AnimatedBuilder(
       animation: _glowAnimation,
       builder: (context, child) {
-        return Container(
-          margin: const EdgeInsets.only(bottom: 16),
-          decoration: BoxDecoration(
+        return GestureDetector(
+          onTap: () {
+            _onHalfRep();
+            Future.delayed(const Duration(milliseconds: 200), _registerRep);
+          },
+          child: Container(
+            margin: const EdgeInsets.only(bottom: 16),
+            decoration: BoxDecoration(
             color: const Color(0xFF111118).withValues(alpha: 0.94),
             borderRadius: BorderRadius.circular(24),
             border: Border.all(
@@ -193,7 +173,7 @@ class _PassiveSensorTrackerState extends State<PassiveSensorTracker>
               ),
             ],
           ),
-        );
+        ));
       },
     );
   }

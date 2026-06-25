@@ -107,6 +107,43 @@ class AuthNotifier extends StateNotifier<AuthState> {
     await _supabase.auth.signOut();
     state = AuthState();
   }
+
+  Future<bool> updateUsername(String newUsername) async {
+    state = state.copyWith(isLoading: true, error: null);
+    try {
+      final response = await _supabase.auth.updateUser(
+        UserAttributes(data: {'username': newUsername}),
+      );
+      state = state.copyWith(user: response.user, isLoading: false);
+      return true;
+    } catch (e) {
+      state = state.copyWith(isLoading: false, error: 'Failed to update profile');
+      return false;
+    }
+  }
+
+  Future<bool> deleteAccount() async {
+    state = state.copyWith(isLoading: true, error: null);
+    try {
+      final userId = _supabase.auth.currentUser?.id;
+      if (userId == null) return false;
+      
+      // Try calling an RPC if available (requires setting up a delete_user RPC in Supabase)
+      try {
+        await _supabase.rpc('delete_user');
+      } catch (_) {
+        // Fallback: Delete the user data from 'players' if we can't delete auth user directly
+        // The cascading deletes will remove their data, though auth record remains
+        await _supabase.from('players').delete().eq('user_id', userId);
+      }
+      
+      await logout();
+      return true;
+    } catch (e) {
+      state = state.copyWith(isLoading: false, error: 'Failed to delete account');
+      return false;
+    }
+  }
 }
 
 final authProvider = StateNotifierProvider<AuthNotifier, AuthState>((ref) {

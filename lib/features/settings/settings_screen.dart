@@ -16,13 +16,6 @@ class SettingsScreen extends ConsumerWidget {
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios_new_rounded, color: ShadowColors.textPrimary),
-          onPressed: () {
-            HapticFeedback.lightImpact();
-            Navigator.of(context).pop();
-          },
-        ),
         title: Text(
           'SETTINGS',
           style: ShadowTextTheme.headline(20, letterSpacing: 2),
@@ -30,8 +23,19 @@ class SettingsScreen extends ConsumerWidget {
         centerTitle: true,
       ),
       body: ListView(
-        padding: const EdgeInsets.all(24),
+        padding: const EdgeInsets.fromLTRB(16, 16, 16, 100),
         children: [
+          _buildSettingsItem(
+            icon: Icons.person_rounded,
+            title: 'EDIT PROFILE',
+            onTap: () {
+              HapticFeedback.lightImpact();
+              final user = ref.read(authProvider).user;
+              final username = user?.userMetadata?['username'] as String? ?? 'HUNTER';
+              _showEditProfileDialog(context, ref, username);
+            },
+          ),
+          const Divider(color: ShadowColors.systemBorder, height: 1),
           _buildSettingsItem(
             icon: Icons.calendar_month_rounded,
             title: 'EDIT SCHEDULE',
@@ -44,7 +48,7 @@ class SettingsScreen extends ConsumerWidget {
               );
             },
           ),
-          const SizedBox(height: 16),
+          const Divider(color: ShadowColors.systemBorder, height: 1),
           _buildSettingsItem(
             icon: Icons.logout_rounded,
             title: 'LOGOUT',
@@ -60,6 +64,57 @@ class SettingsScreen extends ConsumerWidget {
               }
             },
           ),
+          const Divider(color: ShadowColors.systemBorder, height: 1),
+          _buildSettingsItem(
+            icon: Icons.delete_forever_rounded,
+            title: 'DELETE ACCOUNT',
+            color: ShadowColors.hpRed,
+            onTap: () async {
+              HapticFeedback.heavyImpact();
+              final confirm = await showDialog<bool>(
+                context: context,
+                builder: (context) => AlertDialog(
+                  backgroundColor: ShadowColors.surfaceAlt,
+                  title: Text(
+                    'DELETE ACCOUNT?',
+                    style: ShadowTextTheme.headline(20, color: ShadowColors.hpRed),
+                  ),
+                  content: Text(
+                    'This action cannot be undone. All your progress will be lost.',
+                    style: ShadowTextTheme.body(14),
+                  ),
+                  actions: [
+                    TextButton(
+                      onPressed: () => Navigator.of(context).pop(false),
+                      child: Text('CANCEL', style: ShadowTextTheme.body(14)),
+                    ),
+                    TextButton(
+                      onPressed: () => Navigator.of(context).pop(true),
+                      child: Text('DELETE', style: ShadowTextTheme.body(14, color: ShadowColors.hpRed)),
+                    ),
+                  ],
+                ),
+              );
+
+              if (confirm == true) {
+                HapticFeedback.heavyImpact();
+                final success = await ref.read(authProvider.notifier).deleteAccount();
+                if (success && context.mounted) {
+                  Navigator.of(context).pushAndRemoveUntil(
+                    MaterialPageRoute(builder: (context) => const LoginScreen()),
+                    (route) => false,
+                  );
+                } else if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text('Failed to delete account.', style: ShadowTextTheme.body(14)),
+                      backgroundColor: ShadowColors.hpRed,
+                    ),
+                  );
+                }
+              }
+            },
+          ),
         ],
       ),
     );
@@ -71,29 +126,59 @@ class SettingsScreen extends ConsumerWidget {
     required VoidCallback onTap,
     Color color = ShadowColors.textPrimary,
   }) {
-    return GestureDetector(
+    return ListTile(
       onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.all(20),
-        decoration: BoxDecoration(
-          color: ShadowColors.surfaceAlt,
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: ShadowColors.systemBorder),
-        ),
-        child: Row(
-          children: [
-            Icon(icon, color: color, size: 28),
-            const SizedBox(width: 16),
-            Expanded(
-              child: Text(
-                title,
-                style: ShadowTextTheme.headline(16, color: color),
+      contentPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      leading: Icon(icon, color: color, size: 28),
+      title: Text(
+        title,
+        style: ShadowTextTheme.headline(16, color: color),
+      ),
+      trailing: Icon(Icons.chevron_right_rounded, color: color.withValues(alpha: 0.5)),
+    );
+  }
+
+  void _showEditProfileDialog(BuildContext context, WidgetRef ref, String currentUsername) {
+    final controller = TextEditingController(text: currentUsername);
+    showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          backgroundColor: ShadowColors.surfaceAlt,
+          title: Text('EDIT PROFILE', style: ShadowTextTheme.headline(20, color: ShadowColors.amethyst)),
+          content: TextField(
+            controller: controller,
+            style: ShadowTextTheme.body(16, color: ShadowColors.textPrimary),
+            decoration: InputDecoration(
+              labelText: 'HUNTER NAME',
+              labelStyle: ShadowTextTheme.body(14, color: ShadowColors.textSecondary),
+              enabledBorder: const UnderlineInputBorder(
+                borderSide: BorderSide(color: ShadowColors.systemBorder),
+              ),
+              focusedBorder: const UnderlineInputBorder(
+                borderSide: BorderSide(color: ShadowColors.amethyst),
               ),
             ),
-            Icon(Icons.chevron_right_rounded, color: color.withValues(alpha: 0.5)),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: Text('CANCEL', style: ShadowTextTheme.body(14)),
+            ),
+            TextButton(
+              onPressed: () async {
+                final newName = controller.text.trim();
+                if (newName.isNotEmpty && newName != currentUsername) {
+                  HapticFeedback.heavyImpact();
+                  await ref.read(authProvider.notifier).updateUsername(newName);
+                }
+                if (context.mounted) Navigator.of(context).pop();
+              },
+              child: Text('SAVE', style: ShadowTextTheme.body(14, color: ShadowColors.amethyst)),
+            ),
           ],
-        ),
-      ),
+        );
+      },
     );
   }
 }
